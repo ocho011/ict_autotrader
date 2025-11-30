@@ -1,0 +1,847 @@
+{
+  "master": {
+    "tasks": [
+      {
+        "id": 1,
+        "title": "Project Setup and Environment Configuration",
+        "description": "Initialize project structure, configure Python environment, and set up essential configuration files (.env, config.yaml, requirements.txt)",
+        "details": "Create the complete directory structure as specified in the PRD:\n- src/ with subdirectories: core/, data/, strategy/, execution/, notification/\n- Create __init__.py files in all Python packages\n- Set up .env file with Binance Testnet API keys and Discord webhook URL\n- Create config.yaml with trading configuration (symbol: BTCUSDT, interval: 15m, use_testnet: true)\n- Create requirements.txt with dependencies:\n  * python-binance>=1.0.19\n  * python-dotenv>=1.0.0\n  * pyyaml>=6.0\n  * aiohttp>=3.9.0\n  * loguru>=0.7.0\n  * pydantic>=2.0.0\n- Set up logs/ directory for logging output\n- Create README.md with quick start instructions\n- Initialize git repository if not already done",
+        "testStrategy": "Verify directory structure matches PRD specification. Test that Python can import from src packages. Validate .env.example exists and config.yaml parses correctly with PyYAML. Run `pip install -r requirements.txt` successfully in a virtual environment.",
+        "priority": "high",
+        "dependencies": [],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Create Complete Directory Structure with Package Initialization",
+            "description": "Set up the complete project directory structure including src/ with all subdirectories (core/, data/, strategy/, execution/, notification/), logs/ directory, and create __init__.py files in all Python packages to enable proper module imports.",
+            "dependencies": [],
+            "details": "Create the following directory structure:\n- src/core/__init__.py\n- src/data/__init__.py\n- src/strategy/__init__.py\n- src/execution/__init__.py\n- src/notification/__init__.py\n- logs/ (for logging output)\n\nEnsure all __init__.py files are created to make directories importable as Python packages. Verify the structure matches the PRD specification exactly.",
+            "status": "pending",
+            "testStrategy": "Verify all directories exist using os.path.exists(). Test Python imports with 'from src.core import *' style commands. Confirm __init__.py files are present in all package directories. Validate logs/ directory is writable."
+          },
+          {
+            "id": 2,
+            "title": "Create Environment Configuration Files (.env and config.yaml)",
+            "description": "Set up .env template file with Binance Testnet API configuration and Discord webhook URL placeholders, and create config.yaml with trading parameters including symbol, interval, and testnet settings.",
+            "dependencies": [
+              1
+            ],
+            "details": "Create .env file (or .env.example) with:\n- BINANCE_API_KEY=your_testnet_api_key_here\n- BINANCE_API_SECRET=your_testnet_api_secret_here\n- DISCORD_WEBHOOK_URL=your_discord_webhook_url_here\n\nCreate config.yaml with:\n- symbol: BTCUSDT\n- interval: 15m\n- use_testnet: true\n- Additional trading parameters: risk_per_trade, max_daily_loss_percent, max_position_percent, max_trades_per_day\n- Pattern detection parameters: min_body_ratio, fvg_min_gap_percent",
+            "status": "pending",
+            "testStrategy": "Validate config.yaml parses correctly with PyYAML using yaml.safe_load(). Verify all required keys are present. Test that .env file exists and contains all required variable placeholders. Use python-dotenv to load .env and confirm no parsing errors."
+          },
+          {
+            "id": 3,
+            "title": "Create requirements.txt with All Project Dependencies",
+            "description": "Generate requirements.txt file containing all necessary Python dependencies with specific version constraints to ensure compatibility and reproducibility of the development environment.",
+            "dependencies": [
+              1
+            ],
+            "details": "Create requirements.txt with the following dependencies and versions:\n- python-binance>=1.0.19\n- python-dotenv>=1.0.0\n- pyyaml>=6.0\n- aiohttp>=3.9.0\n- loguru>=0.7.0\n- pydantic>=2.0.0\n\nEnsure version constraints are specified to maintain compatibility. Consider adding testing dependencies if needed (pytest, pytest-asyncio).",
+            "status": "pending",
+            "testStrategy": "Create a fresh virtual environment (python -m venv test_env). Run 'pip install -r requirements.txt' and verify all packages install successfully without errors. Check that installed versions meet the specified constraints using 'pip list'. Test imports of all listed packages."
+          },
+          {
+            "id": 4,
+            "title": "Create README.md with Quick Start Instructions",
+            "description": "Write comprehensive README.md documentation including project overview, setup instructions, environment configuration guide, and quick start steps for developers.",
+            "dependencies": [
+              1,
+              2,
+              3
+            ],
+            "details": "Create README.md with sections:\n- Project Title and Description (ICT Autotrader MVP)\n- Features Overview (event-driven architecture, ICT patterns, risk management)\n- Prerequisites (Python 3.10+, Binance Testnet account)\n- Installation Steps:\n  * Clone repository\n  * Create virtual environment\n  * Install dependencies from requirements.txt\n  * Configure .env file with API keys\n  * Review config.yaml settings\n- Quick Start Guide:\n  * Running the bot\n  * Testing with testnet\n  * Monitoring logs\n- Project Structure overview\n- License and Contributing guidelines",
+            "status": "pending",
+            "testStrategy": "Review README for clarity and completeness. Follow the quick start instructions step-by-step in a clean environment to verify they work. Ensure all commands are accurate and all file references are correct. Validate markdown syntax renders properly."
+          },
+          {
+            "id": 5,
+            "title": "Verify Environment Setup and Import Structure Validation",
+            "description": "Validate that the complete project setup works correctly by testing Python imports, verifying configuration files load properly, and ensuring the environment is ready for development.",
+            "dependencies": [
+              1,
+              2,
+              3,
+              4
+            ],
+            "details": "Create a validation script (verify_setup.py) that:\n- Tests all package imports: from src.core, src.data, src.strategy, src.execution, src.notification\n- Loads and validates config.yaml structure using PyYAML\n- Checks .env file exists and python-dotenv can load it\n- Verifies logs/ directory is writable by creating a test log file\n- Confirms all required dependencies are installed and importable\n- Prints success/failure report\n\nRun this script to confirm the environment is correctly configured.",
+            "status": "pending",
+            "testStrategy": "Run the verification script and ensure all checks pass. Test that 'python -m src.core' doesn't raise import errors. Verify config.yaml loads without exceptions. Confirm all dependencies from requirements.txt can be imported. Test creating a log file in logs/ directory. If using git, verify .gitignore excludes .env and logs/."
+          }
+        ]
+      },
+      {
+        "id": 2,
+        "title": "Implement Event Bus and Core Event System",
+        "description": "Build the foundational event-driven architecture with EventBus, Event dataclass, and EventType enum",
+        "details": "Create src/core/event_bus.py with:\n- EventType enum containing all MVP event types (CANDLE_CLOSED, ORDER_BLOCK_DETECTED, FVG_DETECTED, ENTRY_SIGNAL, ORDER_PLACED, ORDER_FILLED, POSITION_CLOSED, ERROR)\n- Event dataclass with fields: type (EventType), data (Dict[str, Any]), timestamp (datetime, auto-generated)\n- EventBus class implementing async pub/sub pattern:\n  * _subscribers: Dict[EventType, List[Callable]]\n  * _queue: asyncio.Queue for event buffering\n  * subscribe(event_type, handler) method\n  * publish(event) async method (non-blocking)\n  * start() async method with event processing loop\n  * _dispatch(event) async method to call handlers\n  * stop() method for graceful shutdown\n- Add comprehensive error handling with loguru logging\n- Use asyncio.wait_for with 1.0s timeout to prevent blocking\n- Ensure handlers can be both sync and async functions",
+        "testStrategy": "Unit test EventBus with mock handlers subscribing to events. Verify events are dispatched to correct subscribers. Test async and sync handler execution. Verify queue doesn't block on timeout. Test error handling when handlers raise exceptions. Confirm events maintain order of publication.",
+        "priority": "high",
+        "dependencies": [
+          1
+        ],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Create EventType enum with all MVP event types",
+            "description": "Define the EventType enumeration containing all required event types for the MVP system",
+            "dependencies": [],
+            "details": "Create src/core/event_bus.py and define EventType enum with the following members: CANDLE_CLOSED, ORDER_BLOCK_DETECTED, FVG_DETECTED, ENTRY_SIGNAL, ORDER_PLACED, ORDER_FILLED, POSITION_CLOSED, ERROR. Use Python's enum.Enum class. Add docstrings explaining each event type's purpose. Ensure enum values are string literals for clear logging.",
+            "status": "pending",
+            "testStrategy": "Unit test to verify all 8 event types exist in the enum. Test string representation of enum values. Verify enum members are accessible and comparable."
+          },
+          {
+            "id": 2,
+            "title": "Implement Event dataclass with validation and auto-timestamp",
+            "description": "Create the Event dataclass that will represent all events flowing through the system",
+            "dependencies": [
+              1
+            ],
+            "details": "In src/core/event_bus.py, implement Event dataclass using @dataclass decorator with: type field (EventType), data field (Dict[str, Any]), timestamp field (datetime with default_factory=datetime.now for auto-generation). Add __post_init__ validation to ensure type is EventType instance and data is dict. Import required types from typing and datetime modules.",
+            "status": "pending",
+            "testStrategy": "Unit test Event creation with valid and invalid data. Verify timestamp auto-generation. Test validation raises TypeError for invalid type/data. Confirm Event instances are immutable (frozen=True if needed)."
+          },
+          {
+            "id": 3,
+            "title": "Build subscriber management with subscribe/unsubscribe methods",
+            "description": "Implement the subscriber registration system to allow handlers to listen for specific event types",
+            "dependencies": [
+              2
+            ],
+            "details": "In EventBus class, add _subscribers attribute as Dict[EventType, List[Callable]]. Implement subscribe(event_type: EventType, handler: Callable) method that appends handler to the list for that event type, creating new list if needed. Implement unsubscribe(event_type: EventType, handler: Callable) method to remove handler from list. Add validation to ensure event_type is EventType and handler is callable. Include loguru logging for subscribe/unsubscribe operations.",
+            "status": "pending",
+            "testStrategy": "Unit test subscribe adds handlers correctly to _subscribers dict. Test multiple handlers for same event type. Verify unsubscribe removes specific handler. Test subscribe with invalid inputs raises appropriate errors. Confirm logging outputs."
+          },
+          {
+            "id": 4,
+            "title": "Implement async event queue and publish mechanism",
+            "description": "Create the asynchronous event queue and publish method for non-blocking event emission",
+            "dependencies": [
+              3
+            ],
+            "details": "In EventBus class, add _queue attribute as asyncio.Queue() in __init__. Implement async publish(event: Event) method that calls _queue.put_nowait(event) for non-blocking publish. Add _running flag to control event loop. Implement start() async method that creates event processing loop: while _running, await _queue.get(), call _dispatch(event), handle queue.task_done(). Add stop() method to set _running=False and await queue processing completion.",
+            "status": "pending",
+            "testStrategy": "Unit test publish adds events to queue without blocking. Test start() processes events from queue. Verify stop() gracefully shuts down processing loop. Test queue doesn't lose events during shutdown. Confirm asyncio integration works correctly."
+          },
+          {
+            "id": 5,
+            "title": "Create event dispatching with timeout and sync/async handler support",
+            "description": "Implement the core event dispatch mechanism that calls registered handlers with timeout protection",
+            "dependencies": [
+              4
+            ],
+            "details": "Implement _dispatch(event: Event) async method in EventBus. Get handlers from _subscribers[event.type]. For each handler, check if asyncio.iscoroutinefunction(handler). If async, use await asyncio.wait_for(handler(event), timeout=1.0). If sync, wrap in asyncio.create_task(asyncio.to_thread(handler, event)) with wait_for timeout. Catch asyncio.TimeoutError and log warning. Use loguru for dispatching logs showing event type and handler count.",
+            "status": "pending",
+            "testStrategy": "Unit test async handlers are awaited correctly. Test sync handlers execute without blocking event loop. Verify 1.0s timeout prevents hanging handlers. Test both sync and async handlers can be mixed for same event type. Confirm timeout errors are logged but don't crash dispatcher."
+          },
+          {
+            "id": 6,
+            "title": "Add comprehensive error handling, logging, and unit tests",
+            "description": "Implement robust error handling throughout EventBus and create comprehensive test suite",
+            "dependencies": [
+              5
+            ],
+            "details": "Wrap all handler calls in try-except blocks to catch and log exceptions without stopping event processing. Add loguru logging at key points: event published, handler called, handler completed, handler error, timeout. Configure loguru to use structured logging with context (event_type, handler_name). Create tests/core/test_event_bus.py with pytest test cases covering: all event types, event validation, subscribe/unsubscribe, publish/dispatch flow, sync/async handlers, timeout handling, error handling, graceful shutdown, event ordering preservation.",
+            "status": "pending",
+            "testStrategy": "Run pytest with coverage report targeting >90% coverage for event_bus.py. Test failure scenarios: handler raises exception, handler times out, invalid event types. Verify system continues processing after handler errors. Test concurrent event publishing. Validate logs contain expected structured data."
+          }
+        ]
+      },
+      {
+        "id": 3,
+        "title": "Implement State Store for Pattern and Position Management",
+        "description": "Create StateStore class to manage candles, Order Blocks, FVGs, and position state",
+        "details": "Create src/core/state_store.py with:\n- OrderBlock dataclass: type (bullish/bearish), top, bottom, timestamp, touches, is_valid\n- FVG dataclass: type (bullish/bearish), top, bottom, timestamp, filled_percent, is_valid\n- Position dataclass: symbol, side (long/short), entry_price, size, stop_loss, take_profit, timestamp\n- StateStore class with:\n  * candles: deque(maxlen=200) for efficient FIFO storage\n  * order_blocks: List[OrderBlock]\n  * fvgs: List[FVG]\n  * current_position: Optional[Position]\n  * daily_pnl: float\n  * trade_count: int\n- Methods:\n  * add_candle(candle: dict)\n  * add_order_block(ob: OrderBlock)\n  * add_fvg(fvg: FVG)\n  * get_valid_order_blocks(ob_type: str = None) -> List[OrderBlock]\n  * get_valid_fvgs(fvg_type: str = None) -> List[FVG]\n  * _cleanup_old_patterns(max_age_candles: int = 100) - remove patterns older than cutoff\n- Use type hints and dataclasses for clean structure",
+        "testStrategy": "Unit test StateStore methods. Verify candle deque maintains max 200 items. Test pattern cleanup removes old/invalid patterns correctly. Verify filtering by type works for OBs and FVGs. Test position state updates. Confirm daily_pnl and trade_count tracking.",
+        "priority": "high",
+        "dependencies": [
+          1
+        ],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Define dataclasses for OrderBlock, FVG, and Position with validation",
+            "description": "Create dataclasses for OrderBlock, FVG, and Position with proper type hints, field validation, and immutability where appropriate",
+            "dependencies": [],
+            "details": "In src/core/state_store.py:\n- Define OrderBlock dataclass with fields: type (Literal['bullish', 'bearish']), top (float), bottom (float), timestamp (datetime), touches (int), is_valid (bool)\n- Define FVG dataclass with fields: type (Literal['bullish', 'bearish']), top (float), bottom (float), timestamp (datetime), filled_percent (float), is_valid (bool)\n- Define Position dataclass with fields: symbol (str), side (Literal['long', 'short']), entry_price (float), size (float), stop_loss (float), take_profit (float), timestamp (datetime)\n- Add __post_init__ validation methods to ensure: top > bottom, filled_percent in [0, 100], size > 0, etc.\n- Use frozen=True for immutable dataclasses where appropriate\n- Add type hints for all fields using proper types from typing module",
+            "status": "pending",
+            "testStrategy": "Unit test dataclass instantiation with valid data. Test validation logic raises ValueError for invalid inputs (top < bottom, negative size, invalid type strings). Verify immutability for frozen dataclasses. Test default values and optional fields."
+          },
+          {
+            "id": 2,
+            "title": "Implement StateStore class with candle deque and pattern storage",
+            "description": "Create StateStore class with efficient storage for candles, order blocks, FVGs, and position state using deque and lists",
+            "dependencies": [
+              1
+            ],
+            "details": "In src/core/state_store.py:\n- Create StateStore class with __init__ method\n- Initialize candles: deque(maxlen=200) for FIFO storage with automatic old candle removal\n- Initialize order_blocks: List[OrderBlock] = []\n- Initialize fvgs: List[FVG] = []\n- Initialize current_position: Optional[Position] = None\n- Initialize daily_pnl: float = 0.0\n- Initialize trade_count: int = 0\n- Add type hints for all attributes\n- Import deque from collections\n- Ensure StateStore can be instantiated without parameters (use default values)",
+            "status": "pending",
+            "testStrategy": "Unit test StateStore instantiation. Verify candles deque has maxlen=200. Test that adding 201 candles automatically removes the oldest. Verify all attributes initialize with correct default values and types. Test attribute access and modification."
+          },
+          {
+            "id": 3,
+            "title": "Create pattern management methods for adding and retrieving patterns",
+            "description": "Implement methods to add and retrieve order blocks and FVGs with type filtering capabilities",
+            "dependencies": [
+              2
+            ],
+            "details": "In StateStore class:\n- add_candle(candle: dict) -> None: Append candle dict to self.candles deque\n- add_order_block(ob: OrderBlock) -> None: Append OrderBlock to self.order_blocks list\n- add_fvg(fvg: FVG) -> None: Append FVG to self.fvgs list\n- get_valid_order_blocks(ob_type: Optional[str] = None) -> List[OrderBlock]:\n  * Filter order_blocks where is_valid=True\n  * If ob_type provided ('bullish' or 'bearish'), further filter by type\n  * Return filtered list\n- get_valid_fvgs(fvg_type: Optional[str] = None) -> List[FVG]:\n  * Filter fvgs where is_valid=True\n  * If fvg_type provided, filter by type\n  * Return filtered list\n- Use type hints for all parameters and return types\n- Add docstrings explaining parameter usage",
+            "status": "pending",
+            "testStrategy": "Unit test add_candle with various candle dicts. Test add_order_block and add_fvg with valid dataclass instances. Verify get_valid_order_blocks returns only is_valid=True items. Test filtering by ob_type='bullish' and 'bearish'. Test get_valid_fvgs with and without fvg_type filtering. Verify empty lists returned when no valid patterns exist."
+          },
+          {
+            "id": 4,
+            "title": "Implement cleanup logic for removing old and invalid patterns",
+            "description": "Create _cleanup_old_patterns method to efficiently remove patterns older than specified candle age threshold",
+            "dependencies": [
+              3
+            ],
+            "details": "In StateStore class:\n- _cleanup_old_patterns(max_age_candles: int = 100) -> None:\n  * Calculate cutoff_index = len(self.candles) - max_age_candles\n  * If cutoff_index <= 0, return early (not enough candles)\n  * Get cutoff_timestamp from self.candles[cutoff_index]\n  * Filter order_blocks: keep only if timestamp >= cutoff_timestamp\n  * Filter fvgs: keep only if timestamp >= cutoff_timestamp\n  * Update self.order_blocks and self.fvgs with filtered lists\n- Call this method automatically at end of add_candle to maintain state hygiene\n- Handle edge cases: empty candles deque, invalid max_age_candles\n- Add logging for number of patterns removed",
+            "status": "pending",
+            "testStrategy": "Unit test cleanup with 150 candles and patterns of various ages. Verify patterns older than 100 candles are removed. Test edge cases: empty candles, max_age_candles > len(candles), max_age_candles <= 0. Verify cleanup is called after add_candle. Test that valid recent patterns are preserved. Verify cleanup doesn't affect current_position or counters."
+          },
+          {
+            "id": 5,
+            "title": "Add comprehensive unit tests for StateStore methods and edge cases",
+            "description": "Create complete test suite covering all StateStore functionality, edge cases, and error handling",
+            "dependencies": [
+              4
+            ],
+            "details": "Create tests/core/test_state_store.py with:\n- Test fixtures for sample candles, OrderBlocks, FVGs, Positions\n- Test StateStore initialization with default values\n- Test candle deque FIFO behavior with 200+ candles\n- Test add_order_block/add_fvg with valid and invalid data\n- Test get_valid_order_blocks/get_valid_fvgs filtering:\n  * No filter (return all valid)\n  * Type filter ('bullish', 'bearish')\n  * Mix of valid and invalid patterns\n  * Empty pattern lists\n- Test _cleanup_old_patterns:\n  * Various max_age_candles values\n  * Edge cases (empty state, insufficient candles)\n  * Verify correct patterns removed based on timestamp\n- Test position state updates (current_position, daily_pnl, trade_count)\n- Test thread safety if applicable\n- Achieve >90% code coverage for state_store.py\n- Use pytest fixtures and parametrize for test efficiency",
+            "status": "pending",
+            "testStrategy": "Run pytest with coverage reporting: pytest tests/core/test_state_store.py --cov=src/core/state_store --cov-report=term-missing. Verify all public methods are tested. Check edge cases are covered. Ensure tests are isolated and don't depend on execution order. Validate test execution time is reasonable (<5s total)."
+          }
+        ]
+      },
+      {
+        "id": 4,
+        "title": "Implement Binance WebSocket Client for Real-time Data",
+        "description": "Create WebSocket client to connect to Binance Futures and stream kline (candle) data, publishing CANDLE_CLOSED events",
+        "details": "Create src/data/websocket_client.py with:\n- BinanceWebSocket class initialization:\n  * event_bus: EventBus\n  * symbol: str\n  * interval: str\n  * client: AsyncClient (python-binance)\n  * bsm: BinanceSocketManager\n- connect() async method:\n  * Create AsyncClient with API credentials from .env\n  * Use testnet flag from config.yaml\n  * Initialize BinanceSocketManager\n- start_kline_stream() async method:\n  * Use bsm.kline_futures_socket(symbol, interval)\n  * Loop to receive messages\n  * Call _handle_kline(msg) for each message\n- _handle_kline(msg: dict) async method:\n  * Extract kline data from message\n  * Check if candle is closed (kline['x'] == True)\n  * Parse candle: timestamp, open, high, low, close, volume (convert to float)\n  * Publish CANDLE_CLOSED event with candle data and symbol\n- Add reconnection logic with exponential backoff\n- Use loguru for connection status logging\n- Implement graceful shutdown on disconnect",
+        "testStrategy": "Integration test with Binance Testnet. Verify WebSocket connection establishes successfully. Confirm CANDLE_CLOSED events are published only when candle closes. Validate candle data structure (OHLCV). Test reconnection logic by simulating disconnect. Monitor logs for connection status.",
+        "priority": "high",
+        "dependencies": [
+          2,
+          3
+        ],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Set up AsyncClient and BinanceSocketManager initialization with testnet support",
+            "description": "Implement BinanceWebSocket class initialization with AsyncClient and BinanceSocketManager, including testnet configuration",
+            "dependencies": [],
+            "details": "Create src/data/websocket_client.py with BinanceWebSocket class. Implement __init__ method accepting event_bus, symbol, interval parameters. Add connect() async method that: (1) Reads API credentials from .env (BINANCE_API_KEY, BINANCE_API_SECRET), (2) Reads testnet flag from config.yaml, (3) Creates AsyncClient with testnet parameter, (4) Initializes BinanceSocketManager with the client. Add instance variables for client, bsm, symbol, interval, event_bus. Include proper type hints and docstrings.",
+            "status": "pending",
+            "testStrategy": "Unit test initialization with mock credentials. Verify AsyncClient is created with correct testnet flag from config. Test with both testnet=True and testnet=False. Confirm BinanceSocketManager initialization. Validate error handling for missing credentials."
+          },
+          {
+            "id": 2,
+            "title": "Implement WebSocket connection and kline stream subscription",
+            "description": "Create the start_kline_stream() method to establish WebSocket connection and subscribe to kline data stream",
+            "dependencies": [
+              1
+            ],
+            "details": "Implement start_kline_stream() async method that: (1) Uses bsm.kline_futures_socket(symbol, interval) to create kline stream context manager, (2) Implements async with block to manage stream lifecycle, (3) Creates infinite loop to receive messages from stream, (4) Calls _handle_kline(msg) for each received message, (5) Adds connection status logging with loguru (INFO level for successful connection). Handle stream initialization errors and log connection attempts.",
+            "status": "pending",
+            "testStrategy": "Integration test with Binance Testnet. Verify WebSocket connection establishes successfully for BTCUSDT 1m interval. Confirm kline messages are received. Test connection with invalid symbol and verify error handling. Monitor logs for connection status messages."
+          },
+          {
+            "id": 3,
+            "title": "Create message handling and candle parsing logic",
+            "description": "Implement _handle_kline() method to parse WebSocket messages and extract candle data",
+            "dependencies": [
+              2
+            ],
+            "details": "Implement _handle_kline(msg: dict) async method that: (1) Extracts kline dictionary from message structure (msg['k']), (2) Checks if candle is closed using kline['x'] == True condition, (3) Parses candle data when closed: timestamp (kline['t']), open (float(kline['o'])), high (float(kline['h'])), low (float(kline['l'])), close (float(kline['c'])), volume (float(kline['v'])), (4) Creates candle dictionary with parsed data, (5) Logs candle data at DEBUG level. Skip processing if candle is not closed.",
+            "status": "pending",
+            "testStrategy": "Unit test with mock kline messages. Verify parsing with closed candle (x=True) extracts all OHLCV fields correctly. Test with open candle (x=False) skips processing. Validate float conversion for price/volume fields. Test error handling for malformed messages."
+          },
+          {
+            "id": 4,
+            "title": "Implement CANDLE_CLOSED event publishing",
+            "description": "Integrate event_bus to publish CANDLE_CLOSED events when candles complete",
+            "dependencies": [
+              3
+            ],
+            "details": "Extend _handle_kline() method to: (1) Import Event and EventType from core.event_bus, (2) Create Event object with type=EventType.CANDLE_CLOSED, (3) Set event data dictionary containing: candle (parsed OHLCV dict), symbol (self.symbol), interval (self.interval), (4) Call event_bus.publish(event) after candle parsing, (5) Log event publication at INFO level with candle timestamp and symbol. Ensure event is only published for closed candles.",
+            "status": "pending",
+            "testStrategy": "Integration test with EventBus mock. Verify CANDLE_CLOSED event is published only when candle closes. Validate event data structure contains candle, symbol, interval fields. Confirm candle data matches parsed values. Test event is not published for open candles."
+          },
+          {
+            "id": 5,
+            "title": "Add reconnection logic with exponential backoff",
+            "description": "Implement automatic reconnection mechanism with exponential backoff strategy for network failures",
+            "dependencies": [
+              2
+            ],
+            "details": "Add reconnection logic: (1) Wrap start_kline_stream() in retry loop with max_retries (default 10), (2) Implement exponential backoff: initial_delay=1s, max_delay=60s, multiplier=2, (3) Catch connection exceptions (ClientError, BinanceAPIException, asyncio.TimeoutError), (4) Log reconnection attempts at WARNING level with retry count and delay, (5) Reset backoff delay on successful connection, (6) Raise exception after max_retries exhausted. Add _calculate_backoff(attempt: int) helper method.",
+            "status": "pending",
+            "testStrategy": "Unit test backoff calculation for various attempt counts. Integration test reconnection by simulating network failures. Verify exponential backoff delays (1s, 2s, 4s, 8s...). Test max_delay cap at 60s. Confirm connection succeeds after transient failures. Verify exception raised after max_retries."
+          },
+          {
+            "id": 6,
+            "title": "Implement graceful shutdown and cleanup",
+            "description": "Create shutdown mechanism to cleanly close WebSocket connections and release resources",
+            "dependencies": [
+              2
+            ],
+            "details": "Implement graceful shutdown: (1) Add _running flag (default False) to control stream loop, (2) Create stop() async method that sets _running=False, (3) Modify start_kline_stream() loop to check _running flag, (4) Implement __aenter__ and __aexit__ for async context manager support, (5) In __aexit__, call stop() and await client.close_connection(), (6) Close BinanceSocketManager properly, (7) Log shutdown events at INFO level. Add cleanup for pending tasks.",
+            "status": "pending",
+            "testStrategy": "Integration test shutdown sequence. Verify stop() terminates stream loop gracefully. Confirm AsyncClient connection closes properly. Test context manager usage (async with BinanceWebSocket). Verify no resource leaks after shutdown. Test shutdown during active streaming."
+          },
+          {
+            "id": 7,
+            "title": "Integration testing with Binance Testnet and event verification",
+            "description": "Comprehensive integration testing of complete WebSocket client with real testnet connection and event flow",
+            "dependencies": [
+              1,
+              2,
+              3,
+              4,
+              5,
+              6
+            ],
+            "details": "Create integration test: (1) Set up test environment with testnet credentials and config, (2) Initialize BinanceWebSocket with EventBus, BTCUSDT symbol, 1m interval, (3) Subscribe test handler to CANDLE_CLOSED events, (4) Start WebSocket and wait for 2-3 candle events, (5) Verify event data structure and OHLCV values, (6) Test reconnection by simulating network disconnect, (7) Verify graceful shutdown completes successfully, (8) Validate all logs are written correctly. Test with both 1m and 5m intervals.",
+            "status": "pending",
+            "testStrategy": "Full end-to-end test with Binance Testnet. Run for 5+ minutes to capture multiple candles. Verify CANDLE_CLOSED events published only on candle close. Validate event data completeness and accuracy. Test reconnection recovery. Confirm clean shutdown. Review logs for proper connection lifecycle tracking."
+          }
+        ]
+      },
+      {
+        "id": 5,
+        "title": "Implement Order Block and FVG Pattern Detection",
+        "description": "Create pattern detection logic for ICT Order Blocks and Fair Value Gaps (FVG)",
+        "details": "Create src/strategy/patterns.py with detection functions:\n\nOrder Block Detection:\n- detect_order_block(candles: list, config: dict) -> Optional[OrderBlock]\n- Logic:\n  * Require minimum 5 candles\n  * Examine last 2 candles (current and previous)\n  * Calculate body_ratio = abs(close - open) / (high - low)\n  * If body_ratio > min_body_ratio (default 0.7):\n    - Bullish OB: strong bullish candle after bearish candle\n      → Return OrderBlock(type='bullish', top=prev.high, bottom=prev.low, timestamp=prev.timestamp)\n    - Bearish OB: strong bearish candle after bullish candle\n      → Return OrderBlock(type='bearish', top=prev.high, bottom=prev.low, timestamp=prev.timestamp)\n\nFVG Detection:\n- detect_fvg(candles: list, config: dict) -> Optional[FVG]\n- Logic:\n  * Require minimum 3 candles\n  * Check last 3 candles (c1, c2, c3)\n  * Bullish FVG: c1.high < c3.low (gap between first and third candle)\n    → Return FVG(type='bullish', top=c3.low, bottom=c1.high, timestamp=c2.timestamp)\n  * Bearish FVG: c1.low > c3.high\n    → Return FVG(type='bearish', top=c1.low, bottom=c3.high, timestamp=c2.timestamp)\n  * Validate gap size >= min_gap_percent (default 0.1%)\n\n- Use config parameters from config.yaml\n- Return None if patterns not detected\n- Add helper functions for candle body/wick calculations",
+        "testStrategy": "Unit tests with synthetic candle data covering edge cases: strong bullish/bearish candles, FVG gaps, invalid patterns (insufficient candles, small gaps, weak candles). Verify OB detection requires 70%+ body ratio. Confirm FVG only triggers on valid gaps. Test with real historical data from Binance.",
+        "priority": "high",
+        "dependencies": [
+          3
+        ],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Create helper functions for candle body/wick calculations",
+            "description": "Implement utility functions to calculate candle body ratio, wick sizes, and validate candle strength for pattern detection",
+            "dependencies": [],
+            "details": "Create src/strategy/patterns.py with helper functions:\n- calculate_body_ratio(candle: dict) -> float: Calculate abs(close - open) / (high - low), handle zero division by returning 0.0\n- is_bullish_candle(candle: dict) -> bool: Return True if close > open\n- is_bearish_candle(candle: dict) -> bool: Return True if close < open\n- get_candle_body_size(candle: dict) -> float: Return abs(close - open)\n- validate_candle_data(candle: dict) -> bool: Verify candle has required OHLC fields and high >= low\n\nEach function should handle edge cases like missing fields, invalid values, and zero-range candles. Add type hints and docstrings.",
+            "status": "pending",
+            "testStrategy": "Unit tests with synthetic candle data: normal candles, zero-range candles (high=low), missing fields, doji candles (open=close). Verify body_ratio calculations with known values. Test edge cases return appropriate defaults (0.0 for zero division)."
+          },
+          {
+            "id": 2,
+            "title": "Implement Order Block detection logic with body ratio validation",
+            "description": "Build detect_order_block function to identify bullish and bearish Order Blocks based on ICT methodology with configurable body ratio threshold",
+            "dependencies": [
+              1
+            ],
+            "details": "Implement detect_order_block(candles: list, config: dict) -> Optional[OrderBlock]:\n- Validate minimum 5 candles, return None if insufficient\n- Extract last 2 candles: prev = candles[-2], current = candles[-1]\n- Get min_body_ratio from config (default 0.7)\n- Calculate body_ratio for current candle using helper function\n- If body_ratio <= min_body_ratio, return None (weak candle)\n- Bullish OB detection: is_bullish_candle(current) and is_bearish_candle(prev)\n  → Return OrderBlock(type='bullish', top=prev['high'], bottom=prev['low'], timestamp=prev['timestamp'])\n- Bearish OB detection: is_bearish_candle(current) and is_bullish_candle(prev)\n  → Return OrderBlock(type='bearish', top=prev['high'], bottom=prev['low'], timestamp=prev['timestamp'])\n- Return None if no pattern detected\n\nDefine OrderBlock dataclass with fields: type (str), top (float), bottom (float), timestamp (datetime)",
+            "status": "pending",
+            "testStrategy": "Unit tests with synthetic candle sequences: strong bullish OB (bearish→strong bullish), strong bearish OB (bullish→strong bearish), weak candles (body_ratio < 0.7), insufficient candles (<5), same direction candles. Verify None returned for invalid patterns. Test custom min_body_ratio from config."
+          },
+          {
+            "id": 3,
+            "title": "Implement FVG detection with gap validation",
+            "description": "Build detect_fvg function to identify Fair Value Gaps with configurable minimum gap percentage threshold",
+            "dependencies": [
+              1
+            ],
+            "details": "Implement detect_fvg(candles: list, config: dict) -> Optional[FVG]:\n- Validate minimum 3 candles, return None if insufficient\n- Extract last 3 candles: c1 = candles[-3], c2 = candles[-2], c3 = candles[-1]\n- Get min_gap_percent from config (default 0.1)\n- Bullish FVG detection: c1['high'] < c3['low']\n  → gap_size = c3['low'] - c1['high']\n  → gap_percent = (gap_size / c1['high']) * 100\n  → If gap_percent >= min_gap_percent:\n     Return FVG(type='bullish', top=c3['low'], bottom=c1['high'], timestamp=c2['timestamp'])\n- Bearish FVG detection: c1['low'] > c3['high']\n  → gap_size = c1['low'] - c3['high']\n  → gap_percent = (gap_size / c3['high']) * 100\n  → If gap_percent >= min_gap_percent:\n     Return FVG(type='bearish', top=c1['low'], bottom=c3['high'], timestamp=c2['timestamp'])\n- Return None if no valid gap detected\n\nDefine FVG dataclass with fields: type (str), top (float), bottom (float), timestamp (datetime)",
+            "status": "pending",
+            "testStrategy": "Unit tests with synthetic 3-candle sequences: bullish FVG (c1.high < c3.low with gap ≥0.1%), bearish FVG (c1.low > c3.high with gap ≥0.1%), small gaps (<0.1%), no gap (overlapping candles), insufficient candles (<3). Verify gap_percent calculation accuracy. Test custom min_gap_percent from config."
+          },
+          {
+            "id": 4,
+            "title": "Add configuration parameter handling from config.yaml",
+            "description": "Implement configuration loading and default parameter handling for pattern detection thresholds",
+            "dependencies": [],
+            "details": "Extend patterns.py with configuration management:\n- Add get_pattern_config(config: dict) -> dict function:\n  * Extract 'pattern' section from config\n  * Return default values if section missing: {'min_body_ratio': 0.7, 'min_gap_percent': 0.1}\n  * Merge provided config with defaults (config overrides defaults)\n- Update detect_order_block and detect_fvg to call get_pattern_config(config)\n- Document expected config.yaml structure:\n  ```yaml\n  pattern:\n    min_body_ratio: 0.7    # Minimum candle body ratio for Order Blocks\n    min_gap_percent: 0.1   # Minimum gap percentage for FVG (0.1 = 0.1%)\n  ```\n- Add validation for config values: min_body_ratio between 0.0-1.0, min_gap_percent > 0",
+            "status": "pending",
+            "testStrategy": "Unit tests with various config scenarios: complete config with custom values, partial config (only min_body_ratio), missing pattern section (use defaults), invalid values (negative, >1.0). Verify defaults are applied correctly. Test pattern detection functions respect custom config parameters."
+          },
+          {
+            "id": 5,
+            "title": "Create comprehensive unit tests with synthetic candle data",
+            "description": "Build extensive test suite covering all pattern detection edge cases and scenarios using synthetic candle data",
+            "dependencies": [
+              2,
+              3,
+              4
+            ],
+            "details": "Create tests/strategy/test_patterns.py with comprehensive test cases:\n\nHelper function tests:\n- test_calculate_body_ratio_normal_candle\n- test_calculate_body_ratio_zero_range_candle\n- test_calculate_body_ratio_doji\n- test_is_bullish_bearish_candles\n- test_validate_candle_data_edge_cases\n\nOrder Block tests:\n- test_detect_bullish_order_block_valid\n- test_detect_bearish_order_block_valid\n- test_detect_order_block_weak_body_ratio\n- test_detect_order_block_insufficient_candles\n- test_detect_order_block_same_direction_candles\n- test_detect_order_block_custom_config\n\nFVG tests:\n- test_detect_bullish_fvg_valid\n- test_detect_bearish_fvg_valid\n- test_detect_fvg_small_gap\n- test_detect_fvg_no_gap\n- test_detect_fvg_insufficient_candles\n- test_detect_fvg_custom_min_gap\n\nConfig tests:\n- test_get_pattern_config_defaults\n- test_get_pattern_config_custom_values\n- test_get_pattern_config_validation\n\nUse pytest with synthetic candle fixtures. Target >95% code coverage.",
+            "status": "pending",
+            "testStrategy": "Run pytest with coverage report. Verify all edge cases pass. Check coverage ≥95% for patterns.py. Validate test fixtures produce expected candle structures. Ensure tests are deterministic and fast (<1s total execution)."
+          },
+          {
+            "id": 6,
+            "title": "Validate with real historical Binance data",
+            "description": "Test pattern detection algorithms against actual historical market data from Binance Futures to verify real-world behavior",
+            "dependencies": [
+              2,
+              3,
+              4,
+              5
+            ],
+            "details": "Create tests/strategy/test_patterns_integration.py for integration testing:\n- Fetch 100 historical 1h candles for BTCUSDT from Binance Testnet using python-binance\n- Run detect_order_block on sliding windows of 5 candles\n- Run detect_fvg on sliding windows of 3 candles\n- Log detected patterns with timestamps and price levels\n- Validate pattern characteristics:\n  * Order Blocks have top > bottom\n  * FVGs have valid gap ranges\n  * No None returns cause crashes\n  * Pattern counts are reasonable (not detecting every candle)\n- Create visualization script (optional) to plot candles + detected patterns using matplotlib\n- Test with multiple symbols (BTCUSDT, ETHUSDT) and timeframes (1h, 4h)\n- Document sample output in tests/strategy/sample_patterns.txt\n\nRequires BINANCE_API_KEY and BINANCE_SECRET_KEY in .env for Testnet access.",
+            "status": "pending",
+            "testStrategy": "Integration test requiring Binance API access. Verify patterns detected on real data match visual chart analysis. Check no runtime errors with actual market data structures. Validate reasonable pattern frequency (10-30% of candles for OB, 5-15% for FVG). Compare results across different symbols for consistency."
+          }
+        ]
+      },
+      {
+        "id": 6,
+        "title": "Implement Signal Generation Engine",
+        "description": "Build SignalEngine to detect patterns from candle data and generate entry signals with confluence",
+        "details": "Create src/strategy/signal_engine.py with:\n\nSignalEngine class:\n- __init__(event_bus, state, config):\n  * Subscribe to CANDLE_CLOSED events\n  * Store references to event_bus, state_store, strategy config\n\n- on_candle_closed(event: Event) async:\n  * Extract candle from event data\n  * Add to state.candles\n  * Skip if < 20 candles in state\n  * Call _detect_patterns()\n  * Call _check_entry_signal(candle)\n\n- _detect_patterns() async:\n  * Get candles list from state\n  * Call detect_order_block(candles, config)\n  * If OB found:\n    - Add to state via state.add_order_block(ob)\n    - Publish ORDER_BLOCK_DETECTED event\n  * Call detect_fvg(candles, config)\n  * If FVG found:\n    - Add to state via state.add_fvg(fvg)\n    - Publish FVG_DETECTED event\n\n- _check_entry_signal(candle: dict) async:\n  * Skip if state.current_position exists (already in trade)\n  * Get current price from candle['close']\n  * Bullish Entry:\n    - Loop through state.get_valid_order_blocks('bullish')\n    - Check if price in OB range (ob.bottom <= price <= ob.top)\n    - Check for FVG confluence (price in bullish FVG range)\n    - Publish ENTRY_SIGNAL event with: side='long', price, order_block, has_fvg_confluence, stop_loss (OB bottom - 0.2%), take_profit (price + 1%)\n  * Bearish Entry:\n    - Similar logic for bearish OBs\n    - SL: OB top + 0.2%, TP: price - 1%\n\n- Use loguru for signal generation logging",
+        "testStrategy": "Unit test pattern detection flow with mock candles. Verify OB/FVG events published correctly. Test entry signal generation for both long/short scenarios. Confirm signals only generated when no position exists. Validate SL/TP calculation accuracy. Test confluence detection (OB + FVG overlap). Integration test with live EventBus.",
+        "priority": "high",
+        "dependencies": [
+          2,
+          3,
+          5
+        ],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Set up SignalEngine class with EventBus subscription",
+            "description": "Create SignalEngine class structure with initialization, EventBus subscription, and configuration storage",
+            "dependencies": [],
+            "details": "Create src/strategy/signal_engine.py with SignalEngine class. Implement __init__(event_bus, state, config) that stores references to event_bus, state_store, and strategy config. Subscribe to CANDLE_CLOSED events using event_bus.subscribe(EventType.CANDLE_CLOSED, self.on_candle_closed). Add loguru logger configuration for signal generation. Set up basic class structure with placeholder methods for on_candle_closed, _detect_patterns, and _check_entry_signal.",
+            "status": "pending",
+            "testStrategy": "Unit test SignalEngine initialization. Verify EventBus subscription is registered correctly. Confirm all required references (event_bus, state_store, config) are stored. Test logger outputs debug messages correctly."
+          },
+          {
+            "id": 2,
+            "title": "Implement candle processing and state management",
+            "description": "Build on_candle_closed handler to process incoming candles and maintain state with minimum candle validation",
+            "dependencies": [
+              1
+            ],
+            "details": "Implement on_candle_closed(event: Event) async method. Extract candle data from event.data. Add candle to state.candles list. Implement validation to skip processing if fewer than 20 candles exist in state (log skip reason). Call _detect_patterns() and _check_entry_signal(candle) after validation passes. Add error handling for malformed candle data. Log candle processing status at each step.",
+            "status": "pending",
+            "testStrategy": "Unit test with mock Event objects containing candle data. Verify candles are added to state correctly. Test skip logic when < 20 candles present. Confirm _detect_patterns and _check_entry_signal are called when threshold met. Test error handling with invalid candle data."
+          },
+          {
+            "id": 3,
+            "title": "Create pattern detection integration (OB and FVG)",
+            "description": "Implement _detect_patterns method to identify order blocks and fair value gaps, publishing detection events",
+            "dependencies": [
+              2
+            ],
+            "details": "Implement _detect_patterns() async method. Retrieve candles list from state.candles. Call detect_order_block(candles, config) from pattern_detection module. If order block found, add to state via state.add_order_block(ob) and publish ORDER_BLOCK_DETECTED event with OB data. Call detect_fvg(candles, config) similarly. If FVG found, add to state via state.add_fvg(fvg) and publish FVG_DETECTED event. Log each pattern detection attempt and result. Handle cases where no patterns are detected.",
+            "status": "pending",
+            "testStrategy": "Unit test with mock candle data that produces known OB and FVG patterns. Verify detect_order_block and detect_fvg are called with correct parameters. Confirm patterns are added to state correctly. Verify ORDER_BLOCK_DETECTED and FVG_DETECTED events are published with proper data structure. Test scenarios with no patterns detected."
+          },
+          {
+            "id": 4,
+            "title": "Implement bullish entry signal logic with confluence detection",
+            "description": "Build bullish entry signal detection that checks for order block alignment and FVG confluence",
+            "dependencies": [
+              3
+            ],
+            "details": "Implement bullish entry logic in _check_entry_signal(candle: dict) async. Check if state.current_position exists - skip if already in trade. Extract current price from candle['close']. Loop through state.get_valid_order_blocks('bullish'). For each bullish OB, check if current price is within OB range (ob.bottom <= price <= ob.top). Check for FVG confluence by verifying if price also falls within any bullish FVG range from state.get_valid_fvgs('bullish'). Set has_fvg_confluence flag. If entry conditions met, prepare signal data with side='long', price, order_block reference, has_fvg_confluence flag. Log bullish signal detection with confluence status.",
+            "status": "pending",
+            "testStrategy": "Unit test with mock state containing bullish OBs and FVGs. Test price within OB range detection. Verify confluence detection when price overlaps both OB and FVG. Test scenario where no confluence exists. Confirm signal data structure is correct. Test skip logic when position exists."
+          },
+          {
+            "id": 5,
+            "title": "Implement bearish entry signal logic",
+            "description": "Build bearish entry signal detection mirroring bullish logic for short positions",
+            "dependencies": [
+              4
+            ],
+            "details": "Implement bearish entry logic in _check_entry_signal(candle: dict) async. Similar to bullish logic but for bearish patterns. Loop through state.get_valid_order_blocks('bearish'). Check if current price is within bearish OB range (ob.bottom <= price <= ob.top). Check for bearish FVG confluence using state.get_valid_fvgs('bearish'). If entry conditions met, prepare signal data with side='short', price, order_block reference, has_fvg_confluence flag. Log bearish signal detection with confluence status. Ensure both bullish and bearish checks can run in same method without conflicts.",
+            "status": "pending",
+            "testStrategy": "Unit test with mock state containing bearish OBs and FVGs. Test price within bearish OB range detection. Verify bearish confluence detection. Test scenario where both bullish and bearish patterns exist simultaneously. Confirm correct signal type (short) is generated. Test edge cases where price is at exact OB boundaries."
+          },
+          {
+            "id": 6,
+            "title": "Add stop-loss and take-profit calculation",
+            "description": "Implement SL/TP calculation logic for both long and short positions based on order block levels",
+            "dependencies": [
+              5
+            ],
+            "details": "Extend _check_entry_signal to calculate stop-loss and take-profit levels. For bullish signals: stop_loss = ob.bottom - (ob.bottom * 0.002) [0.2% below OB bottom], take_profit = price + (price * 0.01) [1% above entry]. For bearish signals: stop_loss = ob.top + (ob.top * 0.002) [0.2% above OB top], take_profit = price - (price * 0.01) [1% below entry]. Add SL and TP values to signal data. Publish ENTRY_SIGNAL event with complete data structure: {side, price, order_block, has_fvg_confluence, stop_loss, take_profit, timestamp}. Log calculated SL/TP levels with signal generation.",
+            "status": "pending",
+            "testStrategy": "Unit test SL/TP calculations with known price values. Verify 0.2% offset for stop-loss and 1% offset for take-profit. Test both bullish and bearish calculations. Confirm ENTRY_SIGNAL event contains all required fields. Test edge cases with very small and very large price values. Validate percentage calculations are accurate to avoid rounding errors."
+          },
+          {
+            "id": 7,
+            "title": "Comprehensive testing with mock candles and live EventBus",
+            "description": "Create integration tests simulating complete signal generation flow from candle data to entry signals",
+            "dependencies": [
+              6
+            ],
+            "details": "Create tests/test_signal_engine.py with comprehensive integration tests. Set up test fixtures with EventBus, StateStore, and SignalEngine. Generate mock candle sequences that produce known OB and FVG patterns. Test complete flow: publish CANDLE_CLOSED events → verify pattern detection → verify entry signals published. Test scenarios: (1) bullish entry with confluence, (2) bearish entry with confluence, (3) entry without confluence, (4) no entry signal when position exists, (5) no signal when insufficient candles, (6) multiple patterns but only one valid entry. Verify event publication order and data integrity. Test with realistic BTC/USDT price data. Measure signal generation latency.",
+            "status": "pending",
+            "testStrategy": "Run integration tests with live EventBus instance. Verify all events flow correctly through the system. Confirm no duplicate signals are generated. Test signal generation performance (should complete within 100ms per candle). Verify state consistency after multiple candle processing cycles. Test error recovery when pattern detection fails. Validate logger outputs contain all critical information for debugging."
+          }
+        ]
+      },
+      {
+        "id": 7,
+        "title": "Implement Risk Manager for Position Sizing and Limits",
+        "description": "Create RiskManager to calculate position sizes and enforce risk limits (max daily loss, max trades, risk per trade)",
+        "details": "Create src/execution/risk_manager.py with:\n\nRiskManager class:\n- __init__(config: dict, client: AsyncClient):\n  * Store risk config from config.yaml\n  * Store Binance client reference\n  * Initialize daily_loss: float = 0.0\n  * Initialize trade_count: int = 0\n\n- get_account_balance() async -> float:\n  * Call client.futures_account_balance()\n  * Find USDT balance\n  * Return as float\n\n- can_trade() -> bool:\n  * Check if daily_loss >= max_daily_loss_percent (default 3%)\n  * Check if trade_count >= max_daily_trades (default 5)\n  * Return False if limits exceeded, True otherwise\n  * Log warnings when limits hit\n\n- calculate_position_size(entry_price: float, stop_loss: float) -> float:\n  * Get current balance via get_account_balance()\n  * Calculate risk_amount = balance * (risk_per_trade_percent / 100) (default 1%)\n  * Calculate price_risk = abs(entry_price - stop_loss)\n  * Return 0 if price_risk == 0 (avoid division by zero)\n  * Calculate position_size = risk_amount / price_risk\n  * Calculate max_size = balance * (max_position_percent / 100) / entry_price (default 10%)\n  * Return min(position_size, max_size) rounded to 3 decimals\n  * Log position size calculation details\n\n- record_trade_result(pnl: float):\n  * Add negative PnL to daily_loss\n  * Increment trade_count\n  * Log trade result\n\n- reset_daily():\n  * Reset daily_loss = 0.0\n  * Reset trade_count = 0\n  * Log daily reset (call at UTC midnight)\n\n- Use config parameters: risk_per_trade_percent, max_daily_loss_percent, max_position_percent, max_daily_trades",
+        "testStrategy": "Unit test position sizing with various entry/SL prices. Verify position size respects both risk and max position limits. Test can_trade() enforcement for daily loss and trade count limits. Mock Binance client for balance queries. Verify rounding to 3 decimals. Test edge cases: zero price risk, insufficient balance, max limits hit.",
+        "priority": "high",
+        "dependencies": [
+          1
+        ],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Create RiskManager initialization with config and Binance client",
+            "description": "Set up the RiskManager class constructor to accept configuration and Binance client, initializing daily tracking variables",
+            "dependencies": [],
+            "details": "Create src/execution/risk_manager.py with RiskManager class. Implement __init__(config: dict, client: AsyncClient) that stores risk configuration parameters (risk_per_trade_percent, max_daily_loss_percent, max_position_percent, max_daily_trades) from config dictionary, stores the Binance AsyncClient reference for later API calls, and initializes daily_loss: float = 0.0 and trade_count: int = 0 for tracking daily activity. Add proper type hints and docstrings.",
+            "status": "pending",
+            "testStrategy": "Unit test initialization with sample config dict and mock AsyncClient. Verify all config parameters are stored correctly. Confirm daily_loss and trade_count initialize to 0. Test with missing config keys to ensure proper error handling."
+          },
+          {
+            "id": 2,
+            "title": "Implement async balance retrieval from Binance API",
+            "description": "Create the get_account_balance method to asynchronously fetch USDT balance from Binance Futures API",
+            "dependencies": [
+              1
+            ],
+            "details": "Implement get_account_balance() async -> float method that calls client.futures_account_balance() to retrieve account balance information, filters the response to find the USDT asset entry, extracts the balance value and converts it to float, and handles potential API errors with appropriate logging. Include error handling for network issues, API rate limits, and missing USDT balance.",
+            "status": "pending",
+            "testStrategy": "Unit test with mocked Binance client returning sample balance data. Verify correct USDT balance extraction and float conversion. Test error handling with mocked API failures. Test with empty balance response. Integration test with Binance Testnet to verify real API interaction."
+          },
+          {
+            "id": 3,
+            "title": "Implement daily limit checking (can_trade method)",
+            "description": "Create the can_trade method to enforce daily loss and trade count limits",
+            "dependencies": [
+              1
+            ],
+            "details": "Implement can_trade() -> bool method that checks if daily_loss has reached or exceeded max_daily_loss_percent threshold (default 3% of account balance), checks if trade_count has reached or exceeded max_daily_trades limit (default 5 trades), returns False if either limit is exceeded (preventing further trading), returns True if trading is allowed, and logs warning messages when limits are hit with details about current values and thresholds.",
+            "status": "pending",
+            "testStrategy": "Unit test with various daily_loss and trade_count values. Verify returns False when daily_loss >= 3% threshold. Verify returns False when trade_count >= 5. Verify returns True when both limits are not exceeded. Test boundary conditions (exactly at limit). Verify warning logs are generated when limits hit."
+          },
+          {
+            "id": 4,
+            "title": "Create position sizing calculation with risk/max position limits",
+            "description": "Implement the calculate_position_size method with risk-based and maximum position size constraints",
+            "dependencies": [
+              2
+            ],
+            "details": "Implement calculate_position_size(entry_price: float, stop_loss: float) -> float that calls get_account_balance() to get current balance, calculates risk_amount = balance * (risk_per_trade_percent / 100) using default 1% risk per trade, calculates price_risk = abs(entry_price - stop_loss) as the price distance to stop loss, returns 0 if price_risk == 0 to avoid division by zero, calculates position_size = risk_amount / price_risk for risk-based sizing, calculates max_size = balance * (max_position_percent / 100) / entry_price using default 10% max position, returns min(position_size, max_size) rounded to 3 decimals to respect both constraints, and logs all intermediate calculation values for debugging.",
+            "status": "pending",
+            "testStrategy": "Unit test with various entry prices and stop loss levels. Verify position size respects 1% risk per trade. Verify position size never exceeds 10% of account balance. Test zero price risk returns 0. Test rounding to exactly 3 decimals. Test with extreme values (very small/large prices). Mock get_account_balance to control balance value. Verify calculation logic with manual calculations."
+          },
+          {
+            "id": 5,
+            "title": "Add trade result tracking and daily reset logic",
+            "description": "Implement methods to record trade outcomes and reset daily tracking variables",
+            "dependencies": [
+              1
+            ],
+            "details": "Implement record_trade_result(pnl: float) method that adds negative PnL values to daily_loss (only tracking losses, not gains), increments trade_count by 1, and logs the trade result with PnL and updated daily totals. Implement reset_daily() method that resets daily_loss to 0.0, resets trade_count to 0, and logs the daily reset event with timestamp (should be called at UTC midnight). Add clear logging for both methods to track daily trading activity.",
+            "status": "pending",
+            "testStrategy": "Unit test record_trade_result with positive and negative PnL values. Verify only losses accumulate in daily_loss. Verify trade_count increments correctly. Test reset_daily clears both counters to 0. Test multiple consecutive record_trade_result calls. Verify logging output contains expected information. Test edge case with PnL = 0."
+          },
+          {
+            "id": 6,
+            "title": "Create comprehensive unit tests with mocked client and edge cases",
+            "description": "Build complete test suite covering all RiskManager functionality with mocked Binance client and edge case validation",
+            "dependencies": [
+              1,
+              2,
+              3,
+              4,
+              5
+            ],
+            "details": "Create tests/execution/test_risk_manager.py with comprehensive test coverage: mock AsyncClient for all Binance API calls, test full position sizing workflow with various entry/SL combinations, verify both risk-based and max position limits are enforced correctly, test can_trade enforcement for both daily loss and trade count limits, test edge cases including zero price risk, division by zero protection, very small/large position sizes, API failures during balance retrieval, missing config parameters, test daily reset functionality, verify all rounding is exactly 3 decimals, test integration between record_trade_result and can_trade limit enforcement, and achieve >90% code coverage.",
+            "status": "pending",
+            "testStrategy": "Run pytest with coverage reporting. Verify >90% code coverage for risk_manager.py. Test all edge cases documented in details. Use pytest fixtures for mock client setup. Test concurrent access scenarios if applicable. Verify all logging statements are triggered in appropriate test cases. Integration test with Binance Testnet for balance retrieval validation."
+          }
+        ]
+      },
+      {
+        "id": 8,
+        "title": "Implement Order Manager for Trade Execution",
+        "description": "Build OrderManager to execute market orders, set stop-loss/take-profit, and manage position lifecycle",
+        "details": "Create src/execution/order_manager.py with:\n\nOrderManager class:\n- __init__(event_bus, state, risk_manager, client):\n  * Subscribe to ENTRY_SIGNAL events\n  * Store references to event_bus, state_store, risk_manager, Binance client\n\n- on_entry_signal(event: Event) async:\n  * Extract signal data from event\n  * Check risk_manager.can_trade() - skip if False\n  * Calculate position size via risk_manager.calculate_position_size(entry_price, stop_loss)\n  * Skip if position_size <= 0\n  * Determine side: 'BUY' for long, 'SELL' for short\n  * Execute market order:\n    - await client.futures_create_order(\n        symbol=symbol,\n        side=side,\n        type='MARKET',\n        quantity=position_size\n      )\n  * Log order execution\n  * Call _set_stop_loss_take_profit(side, position_size, stop_loss, take_profit)\n  * Create Position object and store in state.current_position\n  * Publish ORDER_FILLED event with order and position data\n  * On exception: log error and publish ERROR event\n\n- _set_stop_loss_take_profit(side, quantity, stop_loss, take_profit) async:\n  * Determine close_side: 'SELL' for long, 'BUY' for short\n  * Create STOP_MARKET order:\n    - await client.futures_create_order(\n        symbol=symbol,\n        side=close_side,\n        type='STOP_MARKET',\n        stopPrice=round(stop_loss, 2),\n        quantity=quantity,\n        reduceOnly=True\n      )\n  * Create TAKE_PROFIT_MARKET order:\n    - await client.futures_create_order(\n        symbol=symbol,\n        side=close_side,\n        type='TAKE_PROFIT_MARKET',\n        stopPrice=round(take_profit, 2),\n        quantity=quantity,\n        reduceOnly=True\n      )\n  * Log SL/TP placement\n\n- Use testnet for all orders initially\n- Add comprehensive error handling for order failures",
+        "testStrategy": "Integration test with Binance Testnet. Verify market orders execute successfully. Confirm SL/TP orders are placed with correct prices and reduceOnly flag. Test position state updates after order fill. Verify events published correctly. Test error handling for insufficient margin, invalid quantities. Monitor testnet account for actual order placement.",
+        "priority": "high",
+        "dependencies": [
+          2,
+          3,
+          7
+        ],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Set up OrderManager class structure and event subscriptions",
+            "description": "Create the OrderManager class with initialization logic, store dependencies, and subscribe to ENTRY_SIGNAL events",
+            "dependencies": [],
+            "details": "Create src/execution/order_manager.py with OrderManager class. Implement __init__(event_bus, state, risk_manager, client) to store references to event_bus, state_store, risk_manager, and Binance client. Subscribe to ENTRY_SIGNAL events using event_bus.subscribe(EventType.ENTRY_SIGNAL, self.on_entry_signal). Set up logging for the OrderManager. Ensure all dependencies are properly injected and stored as instance variables.",
+            "status": "pending",
+            "testStrategy": "Unit test initialization with mock dependencies. Verify all instance variables are set correctly. Confirm subscription to ENTRY_SIGNAL events. Test logging output during initialization."
+          },
+          {
+            "id": 2,
+            "title": "Implement entry signal processing and validation logic",
+            "description": "Build the on_entry_signal handler to extract signal data, validate trading conditions, and calculate position size",
+            "dependencies": [
+              1
+            ],
+            "details": "Implement async on_entry_signal(event: Event) method. Extract signal data (symbol, entry_price, stop_loss, take_profit, direction) from event. Check risk_manager.can_trade() and skip execution if False. Call risk_manager.calculate_position_size(entry_price, stop_loss) to get position size. Skip execution if position_size <= 0. Determine order side ('BUY' for long, 'SELL' for short) based on signal direction. Add comprehensive logging for validation steps and decisions.",
+            "status": "pending",
+            "testStrategy": "Unit test with mock Event objects containing various signal data. Verify can_trade() check blocks execution when False. Test position size calculation integration. Confirm side determination for long/short signals. Verify skipping logic when position_size <= 0."
+          },
+          {
+            "id": 3,
+            "title": "Create market order execution logic with error handling",
+            "description": "Implement the core market order placement functionality using Binance Futures API with comprehensive error handling",
+            "dependencies": [
+              2
+            ],
+            "details": "Within on_entry_signal, implement market order execution using await client.futures_create_order(symbol=symbol, side=side, type='MARKET', quantity=position_size). Add try/except block to catch order execution errors (insufficient margin, invalid quantity, network errors, API errors). Log successful order execution with order details. On exception, log detailed error information and publish ERROR event with error context. Ensure all orders use testnet configuration initially.",
+            "status": "pending",
+            "testStrategy": "Integration test with Binance Testnet. Verify market orders execute successfully with valid parameters. Test error handling for insufficient margin, invalid quantity formats, network failures. Confirm ERROR events published on failures. Validate order response data structure."
+          },
+          {
+            "id": 4,
+            "title": "Implement stop-loss order placement functionality",
+            "description": "Create the logic to place STOP_MARKET orders for position protection after market order execution",
+            "dependencies": [
+              3
+            ],
+            "details": "Implement _set_stop_loss_take_profit helper method with parameters (side, quantity, stop_loss, take_profit). Determine close_side: 'SELL' for long positions, 'BUY' for short positions. Create STOP_MARKET order using await client.futures_create_order(symbol=symbol, side=close_side, type='STOP_MARKET', stopPrice=round(stop_loss, 2), quantity=quantity, reduceOnly=True). Add error handling for SL order failures. Log SL order placement with order ID and price.",
+            "status": "pending",
+            "testStrategy": "Integration test with Binance Testnet. Verify STOP_MARKET orders created with correct stopPrice and reduceOnly=True. Test price rounding to 2 decimals. Confirm close_side determination for long/short positions. Test error handling for invalid stop prices or quantities."
+          },
+          {
+            "id": 5,
+            "title": "Implement take-profit order placement functionality",
+            "description": "Create the logic to place TAKE_PROFIT_MARKET orders for position exits after market order execution",
+            "dependencies": [
+              4
+            ],
+            "details": "Within _set_stop_loss_take_profit method, create TAKE_PROFIT_MARKET order using await client.futures_create_order(symbol=symbol, side=close_side, type='TAKE_PROFIT_MARKET', stopPrice=round(take_profit, 2), quantity=quantity, reduceOnly=True). Use same close_side determination as stop-loss. Add error handling for TP order failures. Log TP order placement with order ID and price. Ensure both SL and TP orders are placed sequentially in the same method.",
+            "status": "pending",
+            "testStrategy": "Integration test with Binance Testnet. Verify TAKE_PROFIT_MARKET orders created with correct stopPrice and reduceOnly=True. Test price rounding to 2 decimals. Confirm both SL and TP orders placed successfully in sequence. Test error handling when TP order fails but SL succeeded."
+          },
+          {
+            "id": 6,
+            "title": "Add position state management and event publishing",
+            "description": "Implement position object creation, state storage, and ORDER_FILLED event publishing after successful order execution",
+            "dependencies": [
+              5
+            ],
+            "details": "After successful market order execution, create Position object with fields: symbol, side, entry_price, quantity, stop_loss, take_profit, entry_time (current timestamp), status='OPEN'. Store position in state.current_position. Publish ORDER_FILLED event using event_bus.publish() with event data containing order details and position object. Include all relevant order information (order_id, filled_price, filled_quantity) in event data. Add logging for position creation and event publishing.",
+            "status": "pending",
+            "testStrategy": "Unit test position object creation with mock order data. Verify position stored in state.current_position. Confirm ORDER_FILLED event published with correct data structure. Test event data contains order_id, position, timestamp. Validate position fields are populated correctly from order response."
+          },
+          {
+            "id": 7,
+            "title": "Integration testing with Binance Testnet and comprehensive error handling",
+            "description": "Perform end-to-end integration testing on Binance Testnet and validate all error scenarios",
+            "dependencies": [
+              1,
+              2,
+              3,
+              4,
+              5,
+              6
+            ],
+            "details": "Set up integration test environment with Binance Testnet credentials. Create test scenarios: (1) successful long position with SL/TP, (2) successful short position with SL/TP, (3) rejected trade due to risk checks, (4) insufficient margin error, (5) invalid quantity error, (6) network timeout, (7) SL/TP order placement failure. Verify all events published correctly (ENTRY_SIGNAL → ORDER_FILLED or ERROR). Test position state updates. Validate order IDs and prices in logs. Confirm reduceOnly flag on SL/TP orders. Document test results and error scenarios.",
+            "status": "pending",
+            "testStrategy": "Integration tests with real Binance Testnet API. Execute test scenarios for both long/short positions. Simulate error conditions (low balance, invalid params). Verify ERROR events for all failure cases. Confirm SL/TP orders visible in Binance Testnet interface. Validate event flow from signal to order fill. Test reconnection and retry logic."
+          }
+        ]
+      },
+      {
+        "id": 9,
+        "title": "Implement Discord Notification System",
+        "description": "Create Discord webhook integration to send real-time notifications for trades, positions, and errors",
+        "details": "Create src/notification/discord.py with:\n\nDiscordNotifier class:\n- __init__(event_bus, webhook_url):\n  * Subscribe to: ORDER_FILLED, POSITION_CLOSED, ERROR events\n  * Store Discord webhook URL from .env\n\n- send(content: str, embed: dict = None) async:\n  * Prepare payload with content and optional embed\n  * Use aiohttp.ClientSession to POST to webhook URL\n  * Handle rate limits and errors gracefully\n\n- on_order_filled(event: Event) async:\n  * Extract position from event data\n  * Create embed:\n    - Title: \"🟢 포지션 오픈: {side.upper()}\"\n    - Color: 0x00ff00 (green) for long, 0xff0000 (red) for short\n    - Fields:\n      * 심볼: position.symbol\n      * 진입가: $XX,XXX.XX\n      * 수량: X.XXX\n      * SL: $XX,XXX.XX\n      * TP: $XX,XXX.XX\n  * Call send() with embed\n\n- on_position_closed(event: Event) async:\n  * Extract PnL and reason from event data\n  * Create embed:\n    - Title: \"🟢 포지션 종료\" (green) or \"🔴 포지션 종료\" (red) based on PnL\n    - Color: 0x00ff00 for profit, 0xff0000 for loss\n    - Fields:\n      * PnL: $±XXX.XX\n      * 종료 사유: SL/TP/Manual\n  * Call send() with embed\n\n- on_error(event: Event) async:\n  * Extract error message from event data\n  * Send simple message: \"⚠️ **Error**: {error_message}\"\n  * Include context if available\n\n- Use Korean labels as specified in PRD\n- Format currency with commas and 2 decimal places",
+        "testStrategy": "Integration test with real Discord webhook. Verify notifications sent for ORDER_FILLED, POSITION_CLOSED, ERROR events. Check embed formatting and colors. Test rate limit handling. Verify Korean text renders correctly. Test with mock events for various scenarios (long/short, profit/loss, errors).",
+        "priority": "medium",
+        "dependencies": [
+          2
+        ],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Set up DiscordNotifier class with webhook URL and event subscriptions",
+            "description": "Create src/notification/discord.py with DiscordNotifier class that initializes with event_bus and webhook_url, subscribes to ORDER_FILLED, POSITION_CLOSED, and ERROR events from the event bus",
+            "dependencies": [],
+            "details": "Create DiscordNotifier.__init__(event_bus, webhook_url) method that stores the Discord webhook URL from .env configuration and subscribes to three event types: ORDER_FILLED, POSITION_CLOSED, ERROR. Store event_bus reference for publishing/subscribing. Validate webhook_url format. Set up instance variables for webhook URL and event bus reference. Register event handlers: on_order_filled, on_position_closed, on_error with corresponding event types.",
+            "status": "pending",
+            "testStrategy": "Unit test initialization with mock event_bus. Verify webhook URL is stored correctly. Confirm subscriptions registered for all three event types. Test with invalid webhook URL format. Verify event handlers are properly registered."
+          },
+          {
+            "id": 2,
+            "title": "Implement base send method with aiohttp and rate limiting",
+            "description": "Create async send(content, embed) method that posts messages to Discord webhook URL using aiohttp, with proper rate limit handling and error recovery",
+            "dependencies": [
+              1
+            ],
+            "details": "Implement DiscordNotifier.send(content: str, embed: dict = None) async method. Use aiohttp.ClientSession to POST to webhook URL. Prepare payload with content and optional embed dict. Handle Discord rate limits (429 status) with exponential backoff. Implement retry logic for temporary failures. Handle network errors gracefully with logging. Close aiohttp session properly. Return success/failure status. Log all webhook calls with timestamp and payload size.",
+            "status": "pending",
+            "testStrategy": "Unit test with mock aiohttp session. Verify payload structure matches Discord webhook format. Test rate limit handling by mocking 429 response. Test network error handling. Test retry logic with exponential backoff. Verify proper session cleanup."
+          },
+          {
+            "id": 3,
+            "title": "Create ORDER_FILLED notification with Korean embed formatting",
+            "description": "Implement on_order_filled event handler that creates formatted Discord embed with Korean labels for position open notifications",
+            "dependencies": [
+              2
+            ],
+            "details": "Implement DiscordNotifier.on_order_filled(event: Event) async method. Extract position data from event.data. Create Discord embed with title '🟢 포지션 오픈: {side.upper()}'. Set color to 0x00ff00 (green) for LONG, 0xff0000 (red) for SHORT. Add embed fields with Korean labels: 심볼 (symbol), 진입가 (entry price formatted as $XX,XXX.XX), 수량 (quantity with 3 decimals), SL (stop loss price), TP (take profit price). Format all currency values with commas and 2 decimal places. Call send() method with embed. Handle missing or invalid position data gracefully.",
+            "status": "pending",
+            "testStrategy": "Unit test with mock ORDER_FILLED event containing position data. Verify embed structure matches Discord format. Test both LONG and SHORT positions have correct colors. Verify Korean text encoding. Test currency formatting with various values. Test with missing fields in event data. Verify send() is called with correct embed."
+          },
+          {
+            "id": 4,
+            "title": "Create POSITION_CLOSED notification with PnL display",
+            "description": "Implement on_position_closed event handler that creates formatted Discord embed showing profit/loss and close reason with Korean labels",
+            "dependencies": [
+              2
+            ],
+            "details": "Implement DiscordNotifier.on_position_closed(event: Event) async method. Extract PnL amount and close reason from event.data. Create embed with title '🟢 포지션 종료' (green) for profit (PnL > 0) or '🔴 포지션 종료' (red) for loss (PnL <= 0). Set color to 0x00ff00 for profit, 0xff0000 for loss. Add embed fields: PnL formatted as '$±XXX.XX' with + for profit, - for loss, and 종료 사유 (close reason) showing 'SL', 'TP', or 'Manual'. Format PnL with commas and 2 decimals. Call send() with embed. Handle edge cases like zero PnL.",
+            "status": "pending",
+            "testStrategy": "Unit test with mock POSITION_CLOSED events for profit and loss scenarios. Verify correct color selection based on PnL sign. Test PnL formatting with positive, negative, and zero values. Verify Korean text for close reasons. Test all close reasons (SL/TP/Manual). Verify send() called with correct embed structure."
+          },
+          {
+            "id": 5,
+            "title": "Add ERROR notification and integration testing with real webhook",
+            "description": "Implement on_error event handler for error notifications and perform integration testing with actual Discord webhook to verify all notification types",
+            "dependencies": [
+              3,
+              4
+            ],
+            "details": "Implement DiscordNotifier.on_error(event: Event) async method. Extract error message and optional context from event.data. Send simple text message format: '⚠️ **Error**: {error_message}'. Include context details if available in separate lines. Call send() with content only (no embed). Perform integration testing with real Discord webhook URL from .env. Test all three notification types: ORDER_FILLED (long/short), POSITION_CLOSED (profit/loss with SL/TP/Manual reasons), ERROR (with/without context). Verify Korean text renders correctly in Discord. Test rate limiting with rapid successive messages. Verify embed colors and formatting appear correctly in Discord client.",
+            "status": "pending",
+            "testStrategy": "Integration test with real Discord webhook from testnet .env. Create mock events for all scenarios: ORDER_FILLED (long/short), POSITION_CLOSED (profit/loss, SL/TP/Manual), ERROR (with/without context). Verify messages appear in Discord channel with correct formatting. Check Korean text rendering. Test rate limit handling with 10+ rapid messages. Verify embed colors display correctly. Test error notification with various error message formats."
+          }
+        ]
+      },
+      {
+        "id": 10,
+        "title": "Implement Main Application Entry Point and Integration",
+        "description": "Create main.py to orchestrate all components, load configuration, and run the complete trading system",
+        "details": "Create src/main.py with:\n\n- Import all components:\n  * asyncio, os, yaml, dotenv\n  * loguru logger\n  * binance AsyncClient\n  * EventBus, StateStore\n  * BinanceWebSocket\n  * SignalEngine\n  * OrderManager, RiskManager\n  * DiscordNotifier\n\n- main() async function:\n  * Load .env with load_dotenv()\n  * Load config.yaml with yaml.safe_load()\n  * Initialize loguru logger:\n    - Console output with INFO level\n    - File output to logs/trader.log with rotation\n  * Create EventBus instance\n  * Create StateStore instance\n  * Create AsyncClient for Binance:\n    - API key/secret from os.getenv()\n    - testnet flag from config['trading']['use_testnet']\n  * Create RiskManager(config['risk'], client)\n  * Create BinanceWebSocket(event_bus, symbol, interval)\n  * Create SignalEngine(event_bus, state, config['strategy'])\n  * Create OrderManager(event_bus, state, risk_manager, client)\n  * Create DiscordNotifier(event_bus, webhook_url)\n  * Log startup information:\n    - Symbol, Interval, Testnet status\n    - Risk parameters\n  * Connect WebSocket: await ws_client.connect()\n  * Run event loop and WebSocket stream concurrently:\n    - await asyncio.gather(\n        event_bus.start(),\n        ws_client.start_kline_stream()\n      )\n\n- Add graceful shutdown:\n  * Catch KeyboardInterrupt\n  * Call event_bus.stop()\n  * Close Binance client\n  * Log shutdown message\n\n- if __name__ == \"__main__\":\n  * asyncio.run(main())\n\n- Add config validation on startup\n- Create logs/ directory if it doesn't exist",
+        "testStrategy": "End-to-end integration test: Run main.py with Testnet. Verify all components initialize successfully. Check WebSocket connects and receives candle data. Monitor logs for CANDLE_CLOSED events. Test pattern detection triggers. Verify signal generation and order placement flow. Test Discord notifications. Run for 1 hour to ensure stability. Test graceful shutdown with Ctrl+C.",
+        "priority": "high",
+        "dependencies": [
+          2,
+          3,
+          4,
+          6,
+          7,
+          8,
+          9
+        ],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Create configuration loading system with environment and YAML validation",
+            "description": "Implement configuration loading from .env and config.yaml files with comprehensive validation to ensure all required settings are present and valid before system initialization.",
+            "dependencies": [],
+            "details": "Create configuration loading module in src/main.py:\n- Import python-dotenv, yaml, os modules\n- Implement load_dotenv() to load environment variables from .env file\n- Create load_config() function to read and parse config.yaml using yaml.safe_load()\n- Implement validate_config() function to check:\n  * Required sections exist: trading, risk, strategy\n  * Required env vars exist: BINANCE_API_KEY, BINANCE_API_SECRET, DISCORD_WEBHOOK_URL\n  * Symbol and interval are valid strings\n  * Risk parameters are within valid ranges (risk_per_trade 0.01-0.05, max_positions > 0)\n  * Strategy config has required fields: ob_lookback, fvg_threshold, risk_reward_ratio\n- Raise ConfigurationError with descriptive messages if validation fails\n- Return validated config dict for use by main application",
+            "status": "pending",
+            "testStrategy": "Unit test config loading with valid config.yaml and .env files. Test validation with missing required fields, invalid types, out-of-range values. Verify ConfigurationError raised with clear messages. Test with minimal valid config and full config with all optional fields."
+          },
+          {
+            "id": 2,
+            "title": "Set up logging infrastructure with file rotation and console output",
+            "description": "Configure loguru logger with dual output to console and rotating log files, ensuring proper log directory creation and appropriate log levels for debugging and production use.",
+            "dependencies": [
+              1
+            ],
+            "details": "Implement logging setup in src/main.py:\n- Import loguru logger\n- Create setup_logging() function:\n  * Create logs/ directory using os.makedirs(exist_ok=True)\n  * Remove default logger handler\n  * Add console sink:\n    - Format: \"<green>{time:YYYY-MM-DD HH:mm:ss}</green> | <level>{level: <8}</level> | <cyan>{name}</cyan>:<cyan>{function}</cyan> - <level>{message}</level>\"\n    - Level: INFO\n    - Colorize: True\n  * Add file sink:\n    - Path: logs/trader.log\n    - Rotation: \"10 MB\" or \"1 day\"\n    - Retention: \"7 days\"\n    - Level: DEBUG\n    - Format: \"{time:YYYY-MM-DD HH:mm:ss} | {level: <8} | {name}:{function}:{line} - {message}\"\n  * Log initial message: \"Logging system initialized\"\n- Call setup_logging() early in main() function",
+            "status": "pending",
+            "testStrategy": "Test log directory creation when it doesn't exist. Verify console output appears with colors and INFO level. Check logs/trader.log file is created and contains DEBUG level messages. Test log rotation by writing large volume of logs. Verify retention policy by checking old logs are deleted."
+          },
+          {
+            "id": 3,
+            "title": "Initialize core infrastructure components (EventBus, StateStore, AsyncClient)",
+            "description": "Create and initialize the foundational components required by all trading subsystems: EventBus for event-driven architecture, StateStore for shared state, and Binance AsyncClient for exchange connectivity.",
+            "dependencies": [
+              1,
+              2
+            ],
+            "details": "Implement core component initialization in main() function:\n- Import EventBus from src/core/event_bus\n- Import StateStore from src/core/state\n- Import AsyncClient from binance\n- Create EventBus instance: event_bus = EventBus()\n- Create StateStore instance: state = StateStore()\n- Initialize Binance AsyncClient:\n  * api_key = os.getenv('BINANCE_API_KEY')\n  * api_secret = os.getenv('BINANCE_API_SECRET')\n  * testnet = config['trading']['use_testnet']\n  * client = await AsyncClient.create(api_key, api_secret, testnet=testnet)\n- Log successful initialization:\n  * logger.info(f\"Core components initialized\")\n  * logger.info(f\"Testnet mode: {testnet}\")\n- Store references for later use and cleanup\n- Add to cleanup in shutdown handler",
+            "status": "pending",
+            "testStrategy": "Test with valid API credentials and testnet=True. Verify EventBus instance created successfully. Confirm StateStore initialized with empty candles list. Test AsyncClient creation and verify connection to Binance testnet. Test with invalid credentials and verify error handling. Check cleanup properly closes AsyncClient."
+          },
+          {
+            "id": 4,
+            "title": "Initialize trading components (WebSocket, SignalEngine, OrderManager, RiskManager)",
+            "description": "Create and wire up all trading-specific components that handle market data streaming, pattern detection, signal generation, risk management, and order execution.",
+            "dependencies": [
+              3
+            ],
+            "details": "Implement trading component initialization in main() function:\n- Import BinanceWebSocket from src/data/websocket_client\n- Import SignalEngine from src/strategy/signal_engine\n- Import OrderManager from src/execution/order_manager\n- Import RiskManager from src/execution/risk_manager\n- Extract trading config:\n  * symbol = config['trading']['symbol']\n  * interval = config['trading']['interval']\n- Create RiskManager:\n  * risk_manager = RiskManager(config['risk'], client)\n  * Log risk parameters: logger.info(f\"Risk settings: {config['risk']}\")\n- Create BinanceWebSocket:\n  * ws_client = BinanceWebSocket(event_bus, symbol, interval)\n- Create SignalEngine:\n  * signal_engine = SignalEngine(event_bus, state, config['strategy'])\n- Create OrderManager:\n  * order_manager = OrderManager(event_bus, state, risk_manager, client)\n- Log trading setup:\n  * logger.info(f\"Trading {symbol} on {interval} timeframe\")\n- Store references for shutdown cleanup",
+            "status": "pending",
+            "testStrategy": "Test component creation with valid config. Verify all components subscribe to correct events on EventBus. Test RiskManager with various risk configs. Confirm WebSocket configured for correct symbol/interval. Test SignalEngine subscribes to CANDLE_CLOSED. Verify OrderManager subscribes to ENTRY_SIGNAL. Integration test: verify components can communicate via EventBus."
+          },
+          {
+            "id": 5,
+            "title": "Set up Discord notification system integration",
+            "description": "Initialize Discord webhook integration for real-time notifications of trading events, errors, and system status updates.",
+            "dependencies": [
+              3
+            ],
+            "details": "Implement Discord notifier setup in main() function:\n- Import DiscordNotifier from src/notification/discord\n- Get Discord webhook URL:\n  * webhook_url = os.getenv('DISCORD_WEBHOOK_URL')\n  * Validate webhook_url is not None/empty\n- Create DiscordNotifier:\n  * notifier = DiscordNotifier(event_bus, webhook_url)\n  * Verify subscription to ORDER_FILLED, POSITION_CLOSED, ERROR events\n- Send startup notification:\n  * content = f\"🚀 트레이딩 시스템 시작\\nSymbol: {symbol}\\nInterval: {interval}\\nTestnet: {testnet}\"\n  * await notifier.send(content)\n- Log Discord setup:\n  * logger.info(\"Discord notifications enabled\")\n- Store reference for shutdown notification\n- Add shutdown notification in cleanup:\n  * await notifier.send(\"🛑 트레이딩 시스템 종료\")\n- Handle missing webhook URL gracefully (log warning, continue without notifications)",
+            "status": "pending",
+            "testStrategy": "Test with valid Discord webhook URL and verify startup notification received. Test with missing webhook URL and confirm graceful degradation. Verify notifier subscribes to correct events. Test shutdown notification on clean exit. Integration test: trigger ORDER_FILLED event and verify Discord message sent."
+          },
+          {
+            "id": 6,
+            "title": "Implement concurrent execution with asyncio.gather for event loop and data streaming",
+            "description": "Set up concurrent async execution of EventBus processing loop and WebSocket data streaming using asyncio.gather, ensuring both run simultaneously and handle errors properly.",
+            "dependencies": [
+              4,
+              5
+            ],
+            "details": "Implement concurrent execution in main() function:\n- Connect WebSocket before starting streams:\n  * await ws_client.connect()\n  * logger.info(\"WebSocket connected to Binance\")\n- Create list of concurrent tasks:\n  * tasks = [\n      event_bus.start(),  # Event processing loop\n      ws_client.start_kline_stream()  # WebSocket data stream\n    ]\n- Execute concurrently using asyncio.gather:\n  * await asyncio.gather(*tasks, return_exceptions=True)\n- Handle exceptions from gather:\n  * Check if any task returned exception\n  * Log errors with stack traces\n  * Re-raise critical exceptions\n- Add timeout mechanism:\n  * Wrap gather in asyncio.wait_for with optional timeout\n  * Handle TimeoutError appropriately\n- Log concurrent execution start:\n  * logger.info(\"Starting event bus and WebSocket streams...\")\n- Ensure proper cancellation on shutdown",
+            "status": "pending",
+            "testStrategy": "Test concurrent execution starts both EventBus and WebSocket successfully. Verify both tasks run simultaneously (check logs from both). Test exception handling: simulate WebSocket error, verify EventBus continues or system shuts down cleanly. Test graceful cancellation when main loop interrupted. Monitor for any race conditions or deadlocks."
+          },
+          {
+            "id": 7,
+            "title": "Add graceful shutdown handling with cleanup and resource management",
+            "description": "Implement comprehensive shutdown logic to handle KeyboardInterrupt, cleanup all resources, close connections, and ensure data integrity on exit.",
+            "dependencies": [
+              6
+            ],
+            "details": "Implement graceful shutdown in main() function:\n- Wrap main execution in try/except:\n  * try:\n      # Core initialization (tasks 3-6)\n      # Concurrent execution\n  * except KeyboardInterrupt:\n      logger.info(\"Received shutdown signal (Ctrl+C)\")\n  * except Exception as e:\n      logger.error(f\"Fatal error: {e}\")\n      logger.exception(e)\n  * finally:\n      # Cleanup code\n- Implement cleanup sequence:\n  * Log shutdown start: logger.info(\"Shutting down gracefully...\")\n  * Send Discord shutdown notification (if enabled)\n  * Stop EventBus: await event_bus.stop()\n  * Close WebSocket: await ws_client.close()\n  * Close Binance client: await client.close_connection()\n  * Log final positions and P&L from state\n  * Log shutdown complete: logger.info(\"Shutdown complete\")\n- Add timeout for cleanup operations (10 seconds)\n- Ensure __main__ block calls asyncio.run(main())\n- Handle cleanup failures gracefully (log but don't crash)",
+            "status": "pending",
+            "testStrategy": "Test graceful shutdown with Ctrl+C during normal operation. Verify all cleanup steps execute in correct order. Check all connections closed properly (no resource leaks). Test shutdown during WebSocket connection attempt. Verify Discord notification sent before shutdown. Test cleanup timeout mechanism. Check logs for clean shutdown message sequence."
+          },
+          {
+            "id": 8,
+            "title": "Perform end-to-end integration testing with full system validation",
+            "description": "Conduct comprehensive integration testing of the complete trading system from startup through trading operations to shutdown, validating all component interactions and data flows.",
+            "dependencies": [
+              7
+            ],
+            "details": "Create comprehensive E2E integration test:\n- Test complete startup sequence:\n  * Config loading and validation\n  * Logging initialization\n  * All component creation and initialization\n  * Discord startup notification\n  * WebSocket connection establishment\n- Test runtime operations:\n  * WebSocket receives and processes candle data\n  * CANDLE_CLOSED events published to EventBus\n  * StateStore accumulates candles correctly\n  * Pattern detection triggers (mock candles if needed)\n  * Signal generation and ORDER events\n  * Order execution flow (testnet orders)\n  * Discord notifications for trades\n- Test error scenarios:\n  * Invalid config handling\n  * WebSocket disconnection and reconnection\n  * Order rejection handling\n  * Exception propagation and logging\n- Test shutdown sequence:\n  * Graceful cleanup on Ctrl+C\n  * All resources properly closed\n  * Final state logged\n  * Discord shutdown notification\n- Performance validation:\n  * Event processing latency < 100ms\n  * WebSocket message handling rate\n  * Memory usage stability over time\n- Create integration test script in tests/test_e2e.py\n- Document test results and any issues found",
+            "status": "pending",
+            "testStrategy": "Run main.py with Binance testnet and real Discord webhook. Monitor for 10+ minutes of continuous operation. Verify all components initialize successfully. Check WebSocket receives candles and events flow correctly. Trigger pattern detection with historical data. Place at least one test order. Verify all Discord notifications received. Test graceful shutdown. Review all log files for errors or warnings. Validate no resource leaks or performance degradation."
+          }
+        ]
+      }
+    ],
+    "metadata": {
+      "created": "2025-11-29T04:09:57.822Z",
+      "updated": "2025-11-29T04:09:57.822Z",
+      "description": "Tasks for master context"
+    }
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "disabledMcpjsonServers": [
+    "task-master-ai"
+  ],
+  "permissions": {
+    "allow": [
+      "Bash(task-master expand:*)"
+    ]
+  }
+}

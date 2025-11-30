@@ -1,0 +1,93 @@
+{
+	"meta": {
+		"generatedAt": "2025-11-29T04:20:08.815Z",
+		"tasksAnalyzed": 10,
+		"totalTasks": 10,
+		"analysisCount": 10,
+		"thresholdScore": 5,
+		"projectName": "Taskmaster",
+		"usedResearch": false
+	},
+	"complexityAnalysis": [
+		{
+			"taskId": 1,
+			"taskTitle": "Project Setup and Environment Configuration",
+			"complexityScore": 2,
+			"recommendedSubtasks": 5,
+			"expansionPrompt": "Break down project setup into: (1) Create directory structure with __init__.py files, (2) Create .env template and config.yaml with trading parameters, (3) Create requirements.txt with all dependencies and versions, (4) Set up logging directory and basic README, (5) Verify environment and import structure works correctly",
+			"reasoning": "Low complexity - standard project initialization. Primarily file/directory creation and configuration setup. No code logic required. Main risk is ensuring correct directory structure and dependency versions. 5 subtasks recommended to separate concerns: structure, config files, dependencies, documentation, and validation."
+		},
+		{
+			"taskId": 2,
+			"taskTitle": "Implement Event Bus and Core Event System",
+			"complexityScore": 6,
+			"recommendedSubtasks": 6,
+			"expansionPrompt": "Break down Event Bus implementation into: (1) Create EventType enum with all event types, (2) Implement Event dataclass with validation, (3) Build subscriber management (subscribe/unsubscribe), (4) Implement async event queue and publish mechanism, (5) Create event dispatching with timeout handling and sync/async handler support, (6) Add comprehensive error handling, logging, and unit tests",
+			"reasoning": "Medium-high complexity - foundational async pub/sub pattern. Requires careful handling of async/await, queue management, timeout logic, and both sync/async handler support. Critical component that all other modules depend on. Must handle edge cases like handler failures, queue blocking. 6 subtasks for incremental testing of each component."
+		},
+		{
+			"taskId": 3,
+			"taskTitle": "Implement State Store for Pattern and Position Management",
+			"complexityScore": 5,
+			"recommendedSubtasks": 5,
+			"expansionPrompt": "Break down State Store into: (1) Define dataclasses for OrderBlock, FVG, and Position with validation, (2) Implement StateStore with candle deque and pattern storage, (3) Create pattern management methods (add, get, filter by type), (4) Implement cleanup logic for old/invalid patterns, (5) Add comprehensive unit tests for all methods and edge cases",
+			"reasoning": "Medium complexity - data structure management with cleanup logic. Requires proper use of deque for performance, dataclass design, filtering logic, and pattern invalidation. No async complexity but needs careful state management. 5 subtasks to separate data models, storage, retrieval, cleanup, and testing."
+		},
+		{
+			"taskId": 4,
+			"taskTitle": "Implement Binance WebSocket Client for Real-time Data",
+			"complexityScore": 8,
+			"recommendedSubtasks": 7,
+			"expansionPrompt": "Break down WebSocket client into: (1) Set up AsyncClient and BinanceSocketManager initialization with testnet support, (2) Implement WebSocket connection and kline stream subscription, (3) Create message handling and candle parsing logic, (4) Implement CANDLE_CLOSED event publishing, (5) Add reconnection logic with exponential backoff, (6) Implement graceful shutdown and cleanup, (7) Integration testing with Binance Testnet and event verification",
+			"reasoning": "High complexity - external WebSocket integration with real-time streaming. Involves async I/O, Binance API knowledge, message parsing, reconnection handling, and integration with EventBus. Network errors must be handled gracefully. Requires testnet credentials and live testing. 7 subtasks for staged implementation and thorough testing."
+		},
+		{
+			"taskId": 5,
+			"taskTitle": "Implement Order Block and FVG Pattern Detection",
+			"complexityScore": 7,
+			"recommendedSubtasks": 6,
+			"expansionPrompt": "Break down pattern detection into: (1) Create helper functions for candle body/wick calculations, (2) Implement Order Block detection logic with body ratio validation, (3) Implement FVG detection with gap validation, (4) Add configuration parameter handling from config.yaml, (5) Create comprehensive unit tests with synthetic candle data, (6) Validate with real historical Binance data",
+			"reasoning": "Medium-high complexity - specialized trading algorithm implementation. Requires understanding of ICT concepts (Order Blocks, Fair Value Gaps), precise mathematical calculations, edge case handling (insufficient candles, weak patterns). Algorithm correctness is critical for trading decisions. 6 subtasks to build incrementally with extensive testing."
+		},
+		{
+			"taskId": 6,
+			"taskTitle": "Implement Signal Generation Engine",
+			"complexityScore": 7,
+			"recommendedSubtasks": 7,
+			"expansionPrompt": "Break down Signal Engine into: (1) Set up SignalEngine class with EventBus subscription, (2) Implement candle processing and state management, (3) Create pattern detection integration (OB and FVG), (4) Implement bullish entry signal logic with confluence detection, (5) Implement bearish entry signal logic, (6) Add stop-loss and take-profit calculation, (7) Comprehensive testing with mock candles and live EventBus",
+			"reasoning": "Medium-high complexity - orchestrates pattern detection and signal generation with confluence logic. Integrates StateStore, pattern detection, and EventBus. Complex conditional logic for entry signals. Must prevent duplicate signals, calculate accurate SL/TP. 7 subtasks to implement and test long/short logic separately with integration testing."
+		},
+		{
+			"taskId": 7,
+			"taskTitle": "Implement Risk Manager for Position Sizing and Limits",
+			"complexityScore": 6,
+			"recommendedSubtasks": 6,
+			"expansionPrompt": "Break down Risk Manager into: (1) Create RiskManager initialization with config and Binance client, (2) Implement async balance retrieval from Binance API, (3) Implement daily limit checking (can_trade method), (4) Create position sizing calculation with risk/max position limits, (5) Add trade result tracking and daily reset logic, (6) Unit tests with mocked Binance client and edge cases",
+			"reasoning": "Medium-high complexity - financial risk calculations with external API calls. Requires accurate position sizing math, daily limit enforcement, async balance queries, edge case handling (zero risk, division by zero). Critical for capital preservation. 6 subtasks for incremental implementation with extensive calculation validation."
+		},
+		{
+			"taskId": 8,
+			"taskTitle": "Implement Order Manager for Trade Execution",
+			"complexityScore": 8,
+			"recommendedSubtasks": 7,
+			"expansionPrompt": "Break down Order Manager into: (1) Set up OrderManager with event subscriptions and dependencies, (2) Implement entry signal processing and validation, (3) Create market order execution logic, (4) Implement stop-loss order placement, (5) Implement take-profit order placement, (6) Add position state management and event publishing, (7) Integration testing with Binance Testnet and error handling",
+			"reasoning": "High complexity - live trade execution with real money (testnet initially). Multiple Binance API calls (market, STOP_MARKET, TAKE_PROFIT_MARKET), error handling for order failures, position state management, event publishing. Requires careful testing on testnet before production. 7 subtasks for staged implementation and thorough validation."
+		},
+		{
+			"taskId": 9,
+			"taskTitle": "Implement Discord Notification System",
+			"complexityScore": 4,
+			"recommendedSubtasks": 5,
+			"expansionPrompt": "Break down Discord notifier into: (1) Set up DiscordNotifier with webhook URL and event subscriptions, (2) Implement base send method with aiohttp and rate limiting, (3) Create ORDER_FILLED notification with Korean embed formatting, (4) Create POSITION_CLOSED notification with PnL display, (5) Add ERROR notification and integration testing with real webhook",
+			"reasoning": "Medium-low complexity - webhook integration with formatted messages. Requires aiohttp for async HTTP, embed formatting, Korean text support, rate limit handling. Straightforward implementation but needs proper formatting and error handling. 5 subtasks to implement each notification type separately with testing."
+		},
+		{
+			"taskId": 10,
+			"taskTitle": "Implement Main Application Entry Point and Integration",
+			"complexityScore": 9,
+			"recommendedSubtasks": 8,
+			"expansionPrompt": "Break down main application into: (1) Create configuration loading (env, yaml) with validation, (2) Set up logging infrastructure with file rotation, (3) Initialize all core components (EventBus, StateStore, AsyncClient), (4) Initialize trading components (WebSocket, SignalEngine, OrderManager, RiskManager), (5) Add notification setup (Discord), (6) Implement concurrent execution with asyncio.gather, (7) Add graceful shutdown handling, (8) End-to-end integration testing with full system validation",
+			"reasoning": "High complexity - system integration and orchestration. Brings together 8+ components, requires proper initialization order, config validation, concurrent async execution, graceful shutdown, error handling at application level. Critical testing point for entire system. Most complex task due to integration complexity and need for system-level validation. 8 subtasks for staged integration with comprehensive E2E testing."
+		}
+	]
+}
