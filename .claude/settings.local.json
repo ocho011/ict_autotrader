@@ -1,10 +1,15 @@
 {
-  "disabledMcpjsonServers": [
-    "task-master-ai"
-  ],
   "permissions": {
     "allow": [
-      "Bash(task-master expand:*)"
+      "Bash(task-master expand:*)",
+      "Bash(task-master show:*)",
+      "Bash(mkdir:*)",
+      "Bash(python -m pytest:*)",
+      "Bash(python3 -m pytest:*)",
+      "Bash(git add:*)"
     ]
-  }
+  },
+  "disabledMcpjsonServers": [
+    "task-master-ai"
+  ]
 }
