@@ -209,13 +209,46 @@ class EventType(Enum):
 
 ## Technology Stack
 
-- **Language:** Python 3.10+
+### Core Dependencies (Production)
+
+- **Language:** Python 3.9+
 - **Async Framework:** asyncio
-- **Exchange Library:** python-binance
-- **Configuration:** PyYAML, python-dotenv
-- **Logging:** loguru
-- **Data Validation:** pydantic
-- **HTTP Client:** aiohttp
+- **Exchange Library:** python-binance (>=1.0.19)
+  - Binance API integration for trading and market data
+- **Configuration Management:**
+  - python-dotenv (>=1.0.0) - Environment variable loading
+  - PyYAML (>=6.0) - YAML configuration parsing
+- **Logging:** loguru (>=0.7.0)
+  - Advanced logging with rotation and formatting
+- **Data Validation:** pydantic (>=2.0.0)
+  - Type-safe settings and data models
+- **HTTP Client:** aiohttp (>=3.9.0)
+  - Asynchronous HTTP requests for notifications
+
+### Development Dependencies
+
+- **Testing Framework:** pytest (>=8.0.0)
+  - pytest-asyncio (>=0.23.0) - Async test support
+  - pytest-cov (>=4.1.0) - Coverage reporting
+  - pytest-mock (>=3.12.0) - Mocking utilities
+- **Code Quality:**
+  - black (>=24.0.0) - Code formatting
+  - flake8 (>=7.0.0) - Linting
+  - mypy (>=1.8.0) - Type checking
+  - isort (>=5.13.0) - Import sorting
+- **Development Tools:**
+  - ipython (>=8.20.0) - Interactive shell
+  - ipdb (>=0.13.13) - Debugger
+
+### Installation
+
+```bash
+# Production dependencies
+pip install -r requirements.txt
+
+# Development dependencies
+pip install -r requirements-dev.txt
+```
 
 ## Configuration Files
 

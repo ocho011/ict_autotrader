@@ -1,0 +1,20 @@
+# Production Dependencies for ICT Auto Trader
+# Install with: pip install -r requirements.txt
+
+# Binance API Integration
+python-binance>=1.0.19
+
+# Environment Configuration
+python-dotenv>=1.0.0
+
+# Configuration Management
+pyyaml>=6.0
+
+# Async HTTP Client
+aiohttp>=3.9.0
+
+# Logging Framework
+loguru>=0.7.0
+
+# Data Validation and Settings Management
+pydantic>=2.0.0

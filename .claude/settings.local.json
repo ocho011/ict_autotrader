@@ -6,7 +6,12 @@
       "Bash(mkdir:*)",
       "Bash(python -m pytest:*)",
       "Bash(python3 -m pytest:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(task-master set-status:*)",
+      "Bash(python3 -m pip:*)",
+      "Bash(python3:*)"
     ]
   },
   "disabledMcpjsonServers": [
