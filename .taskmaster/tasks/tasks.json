@@ -95,7 +95,7 @@
         "dependencies": [
           "1"
         ],
-        "status": "pending",
+        "status": "in-progress",
         "subtasks": [
           {
             "id": 1,
@@ -103,9 +103,10 @@
             "description": "Define the EventType enumeration containing all required event types for the MVP system",
             "dependencies": [],
             "details": "Create src/core/event_bus.py and define EventType enum with the following members: CANDLE_CLOSED, ORDER_BLOCK_DETECTED, FVG_DETECTED, ENTRY_SIGNAL, ORDER_PLACED, ORDER_FILLED, POSITION_CLOSED, ERROR. Use Python's enum.Enum class. Add docstrings explaining each event type's purpose. Ensure enum values are string literals for clear logging.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Unit test to verify all 8 event types exist in the enum. Test string representation of enum values. Verify enum members are accessible and comparable.",
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2025-11-30T21:59:49.904Z"
           },
           {
             "id": 2,
@@ -115,9 +116,10 @@
               1
             ],
             "details": "In src/core/event_bus.py, implement Event dataclass using @dataclass decorator with: type field (EventType), data field (Dict[str, Any]), timestamp field (datetime with default_factory=datetime.now for auto-generation). Add __post_init__ validation to ensure type is EventType instance and data is dict. Import required types from typing and datetime modules.",
-            "status": "pending",
+            "status": "in-progress",
             "testStrategy": "Unit test Event creation with valid and invalid data. Verify timestamp auto-generation. Test validation raises TypeError for invalid type/data. Confirm Event instances are immutable (frozen=True if needed).",
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2025-11-30T22:12:15.915Z"
           },
           {
             "id": 3,
@@ -170,7 +172,8 @@
         ],
         "complexity": 6,
         "recommendedSubtasks": 6,
-        "expansionPrompt": "Break down Event Bus implementation into: (1) Create EventType enum with all event types, (2) Implement Event dataclass with validation, (3) Build subscriber management (subscribe/unsubscribe), (4) Implement async event queue and publish mechanism, (5) Create event dispatching with timeout handling and sync/async handler support, (6) Add comprehensive error handling, logging, and unit tests"
+        "expansionPrompt": "Break down Event Bus implementation into: (1) Create EventType enum with all event types, (2) Implement Event dataclass with validation, (3) Build subscriber management (subscribe/unsubscribe), (4) Implement async event queue and publish mechanism, (5) Create event dispatching with timeout handling and sync/async handler support, (6) Add comprehensive error handling, logging, and unit tests",
+        "updatedAt": "2025-11-30T22:12:15.915Z"
       },
       {
         "id": "3",
@@ -938,7 +941,7 @@
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2025-11-30T16:47:11.657Z",
+      "lastModified": "2025-11-30T22:12:15.916Z",
       "taskCount": 10,
       "completedCount": 1,
       "tags": [

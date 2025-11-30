@@ -182,7 +182,25 @@ class Event:
     timestamp: datetime = None
 
     def __post_init__(self):
-        """Set timestamp to current time if not provided."""
+        """
+        Validate event data and set timestamp if not provided.
+
+        Raises:
+            TypeError: If event_type is not EventType or data is not dict
+        """
+        # Validate event_type is EventType enum member
+        if not isinstance(self.event_type, EventType):
+            raise TypeError(
+                f"event_type must be EventType enum, got {type(self.event_type).__name__}"
+            )
+
+        # Validate data is dictionary
+        if not isinstance(self.data, dict):
+            raise TypeError(
+                f"data must be dict, got {type(self.data).__name__}"
+            )
+
+        # Set timestamp to current time if not provided
         if self.timestamp is None:
             self.timestamp = datetime.utcnow()
 

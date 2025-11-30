@@ -11,7 +11,8 @@
       "Bash(git push:*)",
       "Bash(task-master set-status:*)",
       "Bash(python3 -m pip:*)",
-      "Bash(python3:*)"
+      "Bash(python3:*)",
+      "Bash(pytest:*)"
     ]
   },
   "disabledMcpjsonServers": [

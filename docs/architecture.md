@@ -15,6 +15,49 @@ ICT Auto Trader is an event-driven automated trading system for Binance USDT per
 - Non-blocking event publishing
 - Type-safe event handlers
 - Simple queue-based architecture (MVP)
+- Comprehensive validation and auto-timestamping
+
+**Core Components:**
+
+#### Event Dataclass
+The `Event` dataclass is the foundation of the event system, encapsulating all event information:
+
+```python
+@dataclass
+class Event:
+    event_type: EventType   # Type-safe event classification
+    data: Dict[str, Any]    # Event payload (validated as dict)
+    source: str             # Component that emitted the event
+    timestamp: datetime     # Auto-generated if not provided
+```
+
+**Validation Features:**
+- `__post_init__` validation ensures `event_type` is an `EventType` enum member
+- Data payload must be a dictionary (raises `TypeError` otherwise)
+- Timestamp auto-generated using `datetime.utcnow()` if not provided
+- Immutable event data ensures consistency across subscribers
+
+**Usage Example:**
+```python
+# Create event with auto-timestamp
+event = Event(
+    event_type=EventType.CANDLE_CLOSED,
+    data={"symbol": "BTCUSDT", "close": 45000.0},
+    source="data_collector"
+)
+
+# Validation prevents invalid events
+# TypeError raised for non-EventType or non-dict data
+```
+
+#### EventBus
+Implements the Observer pattern for event distribution:
+
+```python
+bus = EventBus()
+bus.subscribe(EventType.CANDLE_CLOSED, on_candle_closed)
+bus.emit(event)  # Calls all subscribers
+```
 
 **Event Flow:**
 ```
