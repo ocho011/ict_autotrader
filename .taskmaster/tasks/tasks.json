@@ -116,10 +116,10 @@
               1
             ],
             "details": "In src/core/event_bus.py, implement Event dataclass using @dataclass decorator with: type field (EventType), data field (Dict[str, Any]), timestamp field (datetime with default_factory=datetime.now for auto-generation). Add __post_init__ validation to ensure type is EventType instance and data is dict. Import required types from typing and datetime modules.",
-            "status": "in-progress",
+            "status": "done",
             "testStrategy": "Unit test Event creation with valid and invalid data. Verify timestamp auto-generation. Test validation raises TypeError for invalid type/data. Confirm Event instances are immutable (frozen=True if needed).",
             "parentId": "undefined",
-            "updatedAt": "2025-11-30T22:12:15.915Z"
+            "updatedAt": "2025-11-30T22:14:44.784Z"
           },
           {
             "id": 3,
@@ -129,9 +129,10 @@
               2
             ],
             "details": "In EventBus class, add _subscribers attribute as Dict[EventType, List[Callable]]. Implement subscribe(event_type: EventType, handler: Callable) method that appends handler to the list for that event type, creating new list if needed. Implement unsubscribe(event_type: EventType, handler: Callable) method to remove handler from list. Add validation to ensure event_type is EventType and handler is callable. Include loguru logging for subscribe/unsubscribe operations.",
-            "status": "pending",
+            "status": "in-progress",
             "testStrategy": "Unit test subscribe adds handlers correctly to _subscribers dict. Test multiple handlers for same event type. Verify unsubscribe removes specific handler. Test subscribe with invalid inputs raises appropriate errors. Confirm logging outputs.",
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2025-11-30T22:23:23.684Z"
           },
           {
             "id": 4,
@@ -173,7 +174,7 @@
         "complexity": 6,
         "recommendedSubtasks": 6,
         "expansionPrompt": "Break down Event Bus implementation into: (1) Create EventType enum with all event types, (2) Implement Event dataclass with validation, (3) Build subscriber management (subscribe/unsubscribe), (4) Implement async event queue and publish mechanism, (5) Create event dispatching with timeout handling and sync/async handler support, (6) Add comprehensive error handling, logging, and unit tests",
-        "updatedAt": "2025-11-30T22:12:15.915Z"
+        "updatedAt": "2025-11-30T22:23:23.684Z"
       },
       {
         "id": "3",
@@ -941,7 +942,7 @@
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2025-11-30T22:12:15.916Z",
+      "lastModified": "2025-11-30T22:23:23.684Z",
       "taskCount": 10,
       "completedCount": 1,
       "tags": [
