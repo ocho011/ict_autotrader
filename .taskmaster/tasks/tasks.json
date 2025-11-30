@@ -129,10 +129,10 @@
               2
             ],
             "details": "In EventBus class, add _subscribers attribute as Dict[EventType, List[Callable]]. Implement subscribe(event_type: EventType, handler: Callable) method that appends handler to the list for that event type, creating new list if needed. Implement unsubscribe(event_type: EventType, handler: Callable) method to remove handler from list. Add validation to ensure event_type is EventType and handler is callable. Include loguru logging for subscribe/unsubscribe operations.",
-            "status": "in-progress",
+            "status": "done",
             "testStrategy": "Unit test subscribe adds handlers correctly to _subscribers dict. Test multiple handlers for same event type. Verify unsubscribe removes specific handler. Test subscribe with invalid inputs raises appropriate errors. Confirm logging outputs.",
             "parentId": "undefined",
-            "updatedAt": "2025-11-30T22:23:23.684Z"
+            "updatedAt": "2025-11-30T22:24:46.316Z"
           },
           {
             "id": 4,
@@ -174,7 +174,7 @@
         "complexity": 6,
         "recommendedSubtasks": 6,
         "expansionPrompt": "Break down Event Bus implementation into: (1) Create EventType enum with all event types, (2) Implement Event dataclass with validation, (3) Build subscriber management (subscribe/unsubscribe), (4) Implement async event queue and publish mechanism, (5) Create event dispatching with timeout handling and sync/async handler support, (6) Add comprehensive error handling, logging, and unit tests",
-        "updatedAt": "2025-11-30T22:23:23.684Z"
+        "updatedAt": "2025-11-30T22:24:46.316Z"
       },
       {
         "id": "3",
@@ -942,7 +942,7 @@
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2025-11-30T22:23:23.684Z",
+      "lastModified": "2025-11-30T22:24:46.317Z",
       "taskCount": 10,
       "completedCount": 1,
       "tags": [

@@ -13,6 +13,7 @@ from enum import Enum
 from typing import Any, Callable, Dict, List
 from dataclasses import dataclass
 from datetime import datetime
+import asyncio
 
 
 class EventType(Enum):
@@ -248,10 +249,13 @@ class EventBus:
     """
 
     def __init__(self):
-        """Initialize the event bus with empty subscriber lists."""
+        """Initialize the event bus with empty subscriber lists and async queue."""
         self._subscribers: Dict[EventType, List[Callable[[Event], None]]] = {
             event_type: [] for event_type in EventType
         }
+        self._queue: asyncio.Queue = asyncio.Queue()
+        self._running: bool = False
+        self._task: asyncio.Task = None
 
     def subscribe(self, event_type: EventType, callback: Callable[[Event], None]) -> None:
         """
@@ -360,3 +364,143 @@ class EventBus:
                 self._subscribers[event_type].clear()
         else:
             self._subscribers[event_type].clear()
+
+    async def publish(self, event: Event) -> None:
+        """
+        Publish an event to the async queue for non-blocking emission.
+
+        This method adds events to an async queue without blocking the caller.
+        Events are processed asynchronously by the event loop started with start().
+
+        Args:
+            event (Event): The event to publish
+
+        Raises:
+            TypeError: If event is not an Event instance
+
+        Examples:
+            >>> bus = EventBus()
+            >>> await bus.start()  # Start event processing loop
+            >>> event = Event(EventType.CANDLE_CLOSED, {'price': 45000}, 'data')
+            >>> await bus.publish(event)  # Non-blocking publish
+        """
+        if not isinstance(event, Event):
+            raise TypeError(f"event must be Event instance, got {type(event)}")
+
+        # Non-blocking queue insertion
+        self._queue.put_nowait(event)
+
+    async def start(self) -> None:
+        """
+        Start the async event processing loop.
+
+        This method creates and runs the event processing task that continuously
+        reads events from the queue and dispatches them to subscribers.
+
+        The processing loop runs until stop() is called.
+
+        Examples:
+            >>> bus = EventBus()
+            >>> await bus.start()
+            >>> # Event processing is now active
+            >>> await bus.publish(event)
+            >>> await bus.stop()
+        """
+        if self._running:
+            return  # Already running
+
+        self._running = True
+        self._task = asyncio.create_task(self._process_events())
+
+    async def _process_events(self) -> None:
+        """
+        Internal event processing loop.
+
+        Continuously reads events from the queue and dispatches them to subscribers.
+        Runs until _running flag is set to False.
+        """
+        while self._running:
+            try:
+                # Wait for event with timeout to allow checking _running flag
+                event = await asyncio.wait_for(self._queue.get(), timeout=0.1)
+
+                # Dispatch event to all subscribers
+                self._dispatch(event)
+
+                # Mark task as done
+                self._queue.task_done()
+            except asyncio.TimeoutError:
+                # No event available, continue loop
+                continue
+            except Exception as e:
+                # Log error but keep processing
+                print(f"Error processing event: {e}")
+
+    def _dispatch(self, event: Event) -> None:
+        """
+        Dispatch an event to all subscribers.
+
+        Internal method to call all registered callbacks for an event type.
+
+        Args:
+            event (Event): The event to dispatch
+        """
+        for callback in self._subscribers[event.event_type]:
+            try:
+                callback(event)
+            except Exception as e:
+                # Log error but don't break other subscribers
+                print(f"Error in event subscriber: {e}")
+
+    async def stop(self) -> None:
+        """
+        Stop the event processing loop and wait for queue to be processed.
+
+        This method gracefully shuts down the event bus by:
+        1. Setting the running flag to False
+        2. Waiting for all queued events to be processed
+        3. Cancelling the processing task
+
+        No events are lost during shutdown.
+
+        Examples:
+            >>> bus = EventBus()
+            >>> await bus.start()
+            >>> # ... process events ...
+            >>> await bus.stop()  # Graceful shutdown
+        """
+        if not self._running:
+            return  # Not running
+
+        self._running = False
+
+        # Wait for all queued events to be processed
+        await self._queue.join()
+
+        # Cancel the processing task
+        if self._task:
+            self._task.cancel()
+            try:
+                await self._task
+            except asyncio.CancelledError:
+                pass  # Expected when cancelling
+
+    @property
+    def is_running(self) -> bool:
+        """
+        Check if the event bus is currently running.
+
+        Returns:
+            bool: True if event processing is active, False otherwise
+        """
+        return self._running
+
+    @property
+    def queue_size(self) -> int:
+        """
+        Get the current number of events in the queue.
+
+        Returns:
+            int: Number of events waiting to be processed
+        """
+        return self._queue.qsize()
