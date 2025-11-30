@@ -51,13 +51,31 @@ event = Event(
 ```
 
 #### EventBus
-Implements the Observer pattern for event distribution:
+Implements the Observer pattern for event distribution with async queue processing:
 
+**Core Methods:**
 ```python
 bus = EventBus()
+
+# Subscribe to events
 bus.subscribe(EventType.CANDLE_CLOSED, on_candle_closed)
-bus.emit(event)  # Calls all subscribers
+
+# Async queue-based publishing (non-blocking)
+await bus.publish(event)  # Adds to queue without blocking
+
+# Event processing lifecycle
+await bus.start()   # Start background event processing loop
+await bus.stop()    # Graceful shutdown with no event loss
+
+# Synchronous emission (direct)
+bus.emit(event)     # Calls all subscribers immediately
 ```
+
+**Async Queue Architecture:**
+- Non-blocking event publishing via `asyncio.Queue`
+- Background event processing loop using `asyncio.create_task()`
+- Graceful shutdown ensures all queued events are processed before stopping
+- Properties: `is_running` (bool), `queue_size` (int)
 
 **Event Flow:**
 ```
