@@ -61,7 +61,37 @@ BINANCE_TESTNET_API_SECRET=your_testnet_api_secret_here
 DISCORD_WEBHOOK_URL=your_discord_webhook_url_here
 ```
 
-### 4. 설정 확인
+### 4. 환경 검증
+
+설정을 시작하기 전에 환경이 올바르게 구성되었는지 확인합니다:
+
+```bash
+# 환경 검증 스크립트 실행
+python3 verify_setup.py
+
+# 자세한 정보가 필요한 경우
+python3 verify_setup.py --verbose
+```
+
+검증 스크립트는 다음 항목을 확인합니다:
+- ✅ Python 패키지 임포트 (src.core, src.data, src.strategy, src.execution, src.notification)
+- ✅ config.yaml 파일 구조 및 필수 필드
+- ✅ .env 파일 존재 여부 및 환경 변수 로딩
+- ✅ requirements.txt의 모든 의존성 설치 여부
+- ✅ logs/ 디렉토리 쓰기 권한
+- ✅ .gitignore 보안 설정 (민감한 파일 제외)
+
+**예상 결과:**
+```
+✓ ALL CHECKS PASSED
+Environment is ready for development!
+```
+
+실패한 항목이 있다면 오류 메시지를 확인하고 수정한 후 다시 실행하세요.
+
+> 💡 **팁**: 자세한 검증 가이드는 [docs/VERIFICATION_GUIDE.md](docs/VERIFICATION_GUIDE.md)를 참조하세요.
+
+### 5. 설정 확인
 
 `config.yaml` 파일을 열어 다음 설정을 확인합니다:
 
@@ -80,7 +110,7 @@ max_position_percent: 0.10  # 최대 10% 포지션
 max_trades_per_day: 5  # 하루 최대 거래 수
 ```
 
-### 5. 봇 실행
+### 6. 봇 실행
 
 ```bash
 # 봇 시작
@@ -96,7 +126,7 @@ INFO  | Testnet: True
 INFO  | WebSocket connected to Binance Testnet
 ```
 
-### 6. 로그 모니터링
+### 7. 로그 모니터링
 
 봇이 실행되는 동안 다음 정보를 확인할 수 있습니다:
 
