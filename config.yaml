@@ -1,0 +1,33 @@
+# ============================================================================
+# ICT AutoTrader Configuration
+# ============================================================================
+
+# ============================================================================
+# ENVIRONMENT CONFIGURATION - CRITICAL SETTING
+# ============================================================================
+# use_testnet: Controls whether to use Binance Testnet or Mainnet
+#   - true:  Uses TESTNET (safe for testing, no real money at risk)
+#   - false: Uses MAINNET (REAL trading with REAL money - EXTREME CAUTION!)
+#
+# ⚠️  BEFORE SETTING TO false (mainnet):
+#   1. Verify ALL risk management parameters are properly configured
+#   2. Test EXTENSIVELY on testnet first
+#   3. Start with SMALL position sizes on mainnet
+#   4. Monitor the first few trades CLOSELY
+#   5. Ensure you have proper stop-loss mechanisms in place
+# ============================================================================
+use_testnet: true
+
+# Trading Pair Configuration
+symbol: BTCUSDT
+interval: 15m  # Candlestick interval: 1m, 5m, 15m, 1h, 4h, 1d
+
+# Risk Management Parameters
+risk_per_trade: 0.02  # Risk 2% of account per trade
+max_daily_loss_percent: 0.05  # Maximum 5% daily loss before stopping
+max_position_percent: 0.10  # Maximum 10% of account in single position
+max_trades_per_day: 5  # Maximum number of trades per day
+
+# Pattern Detection Parameters
+min_body_ratio: 0.5  # Minimum candle body to wick ratio for valid patterns
+fvg_min_gap_percent: 0.001  # Minimum 0.1% gap for Fair Value Gap detection
