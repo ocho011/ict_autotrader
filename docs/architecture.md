@@ -376,14 +376,152 @@ class PatternProcessor(EventProcessor):
 
 ### 4. State Store (`src/core/state_store.py`)
 
-**Purpose:** Centralized state management for patterns and positions
+**Purpose:** Centralized state management for trading patterns and candle history
 
-**Managed State:**
-- Candle history (200 candles max)
-- Order Blocks (using `OrderBlock` model)
-- Fair Value Gaps (using `FVG` model)
-- Current position (using `Position` model)
-- Daily P&L and trade count
+**Status:** ✅ Implemented (Task 3.3 - 2025-12-02)
+
+The StateStore provides in-memory state management for pattern-based trading decisions with automatic memory management and type-safe filtering capabilities.
+
+**Core Features:**
+- **Candle History Management:** Fixed-size deque (500 candles default) with FIFO automatic cleanup
+- **Pattern Storage:** Separate collections for OrderBlocks and FVGs with validity tracking
+- **Type-Safe Filtering:** Literal type hints for compile-time safety on bullish/bearish queries
+- **Memory Efficiency:** Automatic candle overflow handling via deque maxlen
+
+**Implementation:**
+
+```python
+from collections import deque
+from typing import Optional, List, Literal
+from .models import OrderBlock, FVG
+
+class StateStore:
+    def __init__(self, candle_history_size: int = 500):
+        """
+        Initialize state store with configurable history size.
+
+        Args:
+            candle_history_size: Max candles to retain (default: 500)
+        """
+        self.candles: deque = deque(maxlen=candle_history_size)
+        self.order_blocks: List[OrderBlock] = []
+        self.fvgs: List[FVG] = []
+```
+
+**Core Methods:**
+
+#### Storage Methods
+```python
+def add_candle(self, candle: dict) -> None:
+    """
+    Append candle dict to candles deque.
+
+    Auto-removes oldest candle when maxlen reached (FIFO).
+    """
+
+def add_order_block(self, ob: OrderBlock) -> None:
+    """
+    Store OrderBlock pattern (both valid and invalid).
+    """
+
+def add_fvg(self, fvg: FVG) -> None:
+    """
+    Store FVG pattern (both valid and invalid).
+    """
+```
+
+#### Query Methods with Type Filtering
+```python
+def get_valid_order_blocks(
+    self,
+    ob_type: Optional[Literal["bullish", "bearish"]] = None
+) -> List[OrderBlock]:
+    """
+    Get valid order blocks with optional type filtering.
+
+    Two-stage filtering:
+    1. Filter by is_valid=True
+    2. Optionally filter by type
+
+    Args:
+        ob_type: "bullish", "bearish", or None (all valid)
+
+    Returns:
+        List of valid OrderBlocks matching criteria
+    """
+
+def get_valid_fvgs(
+    self,
+    fvg_type: Optional[Literal["bullish", "bearish"]] = None
+) -> List[FVG]:
+    """
+    Get valid FVGs with optional type filtering.
+
+    Args:
+        fvg_type: "bullish", "bearish", or None (all valid)
+
+    Returns:
+        List of valid FVGs matching criteria
+    """
+```
+
+**Design Decisions:**
+- **Simple Data Container:** No inheritance from EventProcessor (focused responsibility)
+- **Deque for Candles:** Automatic FIFO memory management without manual cleanup
+- **Lists for Patterns:** Manual management allows historical pattern tracking
+- **Two-Stage Filtering:** Validity check first, then optional type filter for efficiency
+- **Literal Type Hints:** Compile-time type safety for bullish/bearish parameters
+
+**Usage Example:**
+```python
+from src.core import StateStore
+from src.core.models import OrderBlock, FVG
+from datetime import datetime
+
+# Initialize store
+store = StateStore(candle_history_size=500)
+
+# Add candle data
+candle = {
+    "open": 45000.0,
+    "high": 45100.0,
+    "low": 44900.0,
+    "close": 45050.0,
+    "volume": 123.45
+}
+store.add_candle(candle)
+
+# Store patterns
+ob = OrderBlock(
+    type="bullish",
+    top=45000.0,
+    bottom=44500.0,
+    timestamp=datetime.utcnow(),
+    is_valid=True
+)
+store.add_order_block(ob)
+
+# Query valid patterns
+all_valid_obs = store.get_valid_order_blocks()  # All valid OBs
+bullish_obs = store.get_valid_order_blocks(ob_type="bullish")  # Bullish only
+bearish_fvgs = store.get_valid_fvgs(fvg_type="bearish")  # Bearish FVGs only
+```
+
+**Testing:**
+- **Test Suite:** `tests/unit/core/test_state_store.py` (538 lines)
+- **Test Coverage:** 23/23 tests passed (100%)
+- **Test Categories:**
+  - Initialization and configuration (4 tests)
+  - Candle storage and deque behavior (3 tests)
+  - Pattern addition (4 tests)
+  - Validity filtering (6 tests)
+  - Type filtering (6 tests)
+
+**Integration Points:**
+- **Task 3.4:** Cleanup methods will invalidate old/filled patterns
+- **Task 4 (WebSocket):** Calls `add_candle()` on CANDLE_CLOSED events
+- **Task 6 (SignalEngine):** Uses `get_valid_order_blocks()` and `get_valid_fvgs()` for pattern analysis
+- **Task 8 (OrderManager):** Queries `candles` deque for recent price action
 
 ### 4. WebSocket Client (`src/data/websocket_client.py`)
 
