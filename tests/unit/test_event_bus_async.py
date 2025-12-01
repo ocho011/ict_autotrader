@@ -290,3 +290,213 @@ class TestEventBusAsync:
         assert len(events_received) == 100
         assert events_received[0].data["i"] == 0
         assert events_received[99].data["i"] == 99
+
+    async def test_async_handler_is_awaited_correctly(self):
+        """Test that async handlers are awaited correctly."""
+        bus = EventBus()
+        events_received = []
+
+        async def async_handler(event: Event):
+            """Async handler that processes events."""
+            await asyncio.sleep(0.01)  # Simulate async work
+            events_received.append(event)
+
+        bus.subscribe(EventType.CANDLE_CLOSED, async_handler)
+        await bus.start()
+
+        event = Event(EventType.CANDLE_CLOSED, {"price": 45000}, "test")
+        await bus.publish(event)
+
+        # Wait for async processing
+        await asyncio.sleep(0.1)
+        await bus.stop()
+
+        # Event should have been received
+        assert len(events_received) == 1
+        assert events_received[0].data["price"] == 45000
+
+    async def test_sync_handler_executes_without_blocking(self):
+        """Test that sync handlers execute without blocking event loop."""
+        bus = EventBus()
+        events_received = []
+        import time
+
+        def sync_handler(event: Event):
+            """Sync handler that blocks."""
+            time.sleep(0.05)  # Blocking call
+            events_received.append(event)
+
+        bus.subscribe(EventType.CANDLE_CLOSED, sync_handler)
+        await bus.start()
+
+        # Publish multiple events
+        for i in range(3):
+            await bus.publish(Event(EventType.CANDLE_CLOSED, {"i": i}, "test"))
+
+        # Wait for processing
+        await asyncio.sleep(0.3)
+        await bus.stop()
+
+        # All events should be processed
+        assert len(events_received) == 3
+
+    async def test_handler_timeout_prevents_hanging(self):
+        """Test that 1.0s timeout prevents hanging handlers."""
+        bus = EventBus()
+        timeout_occurred = False
+        other_events = []
+
+        async def slow_handler(event: Event):
+            """Handler that exceeds timeout."""
+            await asyncio.sleep(2.0)  # Exceeds 1.0s timeout
+
+        def fast_handler(event: Event):
+            """Handler that completes quickly."""
+            other_events.append(event)
+
+        bus.subscribe(EventType.CANDLE_CLOSED, slow_handler)
+        bus.subscribe(EventType.CANDLE_CLOSED, fast_handler)
+
+        await bus.start()
+
+        event = Event(EventType.CANDLE_CLOSED, {"price": 45000}, "test")
+        await bus.publish(event)
+
+        # Wait for processing (less than slow handler's sleep time)
+        await asyncio.sleep(1.5)
+        await bus.stop()
+
+        # Fast handler should complete despite slow handler timeout
+        assert len(other_events) == 1
+
+    async def test_mixed_sync_async_handlers_for_same_event(self):
+        """Test both sync and async handlers can be mixed for same event type."""
+        bus = EventBus()
+        sync_events = []
+        async_events = []
+        import time
+
+        def sync_handler(event: Event):
+            time.sleep(0.01)
+            sync_events.append(event)
+
+        async def async_handler(event: Event):
+            await asyncio.sleep(0.01)
+            async_events.append(event)
+
+        bus.subscribe(EventType.CANDLE_CLOSED, sync_handler)
+        bus.subscribe(EventType.CANDLE_CLOSED, async_handler)
+
+        await bus.start()
+
+        event = Event(EventType.CANDLE_CLOSED, {"price": 45000}, "test")
+        await bus.publish(event)
+
+        # Wait for both handlers to process
+        await asyncio.sleep(0.2)
+        await bus.stop()
+
+        # Both handlers should receive the event
+        assert len(sync_events) == 1
+        assert len(async_events) == 1
+        assert sync_events[0].data["price"] == 45000
+        assert async_events[0].data["price"] == 45000
+
+    async def test_timeout_errors_logged_but_dont_crash(self):
+        """Test timeout errors are logged but don't crash dispatcher."""
+        bus = EventBus()
+        successful_events = []
+
+        async def timeout_handler(event: Event):
+            """Handler that will timeout."""
+            await asyncio.sleep(2.0)
+
+        def success_handler(event: Event):
+            """Handler that succeeds."""
+            successful_events.append(event)
+
+        bus.subscribe(EventType.CANDLE_CLOSED, timeout_handler)
+        bus.subscribe(EventType.CANDLE_CLOSED, success_handler)
+
+        await bus.start()
+
+        # Publish multiple events
+        for i in range(3):
+            await bus.publish(Event(EventType.CANDLE_CLOSED, {"i": i}, "test"))
+
+        # Wait for processing
+        await asyncio.sleep(2.0)
+        await bus.stop()
+
+        # Success handler should receive all events despite timeout handler
+        assert len(successful_events) == 3
+
+    async def test_sync_handler_with_timeout(self):
+        """Test sync handlers respect timeout limit."""
+        bus = EventBus()
+        completed_events = []
+        import time
+
+        def slow_sync_handler(event: Event):
+            """Sync handler that exceeds timeout."""
+            time.sleep(2.0)  # Exceeds 1.0s timeout
+
+        def fast_handler(event: Event):
+            completed_events.append(event)
+
+        bus.subscribe(EventType.CANDLE_CLOSED, slow_sync_handler)
+        bus.subscribe(EventType.CANDLE_CLOSED, fast_handler)
+
+        await bus.start()
+
+        event = Event(EventType.CANDLE_CLOSED, {"price": 45000}, "test")
+        await bus.publish(event)
+
+        # Wait for timeout
+        await asyncio.sleep(1.5)
+        await bus.stop()
+
+        # Fast handler should complete
+        assert len(completed_events) == 1
+
+    async def test_multiple_mixed_handlers_all_execute(self):
+        """Test multiple mixed sync/async handlers all execute."""
+        bus = EventBus()
+        results = {"sync1": 0, "sync2": 0, "async1": 0, "async2": 0}
+        import time
+
+        def sync_handler_1(event: Event):
+            time.sleep(0.01)
+            results["sync1"] += 1
+
+        def sync_handler_2(event: Event):
+            time.sleep(0.01)
+            results["sync2"] += 1
+
+        async def async_handler_1(event: Event):
+            await asyncio.sleep(0.01)
+            results["async1"] += 1
+
+        async def async_handler_2(event: Event):
+            await asyncio.sleep(0.01)
+            results["async2"] += 1
+
+        bus.subscribe(EventType.CANDLE_CLOSED, sync_handler_1)
+        bus.subscribe(EventType.CANDLE_CLOSED, async_handler_1)
+        bus.subscribe(EventType.CANDLE_CLOSED, sync_handler_2)
+        bus.subscribe(EventType.CANDLE_CLOSED, async_handler_2)
+
+        await bus.start()
+
+        event = Event(EventType.CANDLE_CLOSED, {"price": 45000}, "test")
+        await bus.publish(event)
+
+        # Wait for all handlers
+        await asyncio.sleep(0.3)
+        await bus.stop()
+
+        # All handlers should have executed
+        assert results["sync1"] == 1
+        assert results["sync2"] == 1
+        assert results["async1"] == 1
+        assert results["async2"] == 1

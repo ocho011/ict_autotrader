@@ -77,6 +77,15 @@ bus.emit(event)     # Calls all subscribers immediately
 - Graceful shutdown ensures all queued events are processed before stopping
 - Properties: `is_running` (bool), `queue_size` (int)
 
+**Event Dispatching with Timeout Protection:**
+- Supports both synchronous and asynchronous handlers
+- 1.0s timeout protection for all handlers to prevent hanging
+- Async handlers: Direct `await` with `asyncio.wait_for()` timeout
+- Sync handlers: Execute in thread pool via `asyncio.to_thread()` to avoid blocking event loop
+- Timeout errors logged but don't crash the dispatcher
+- Handlers for the same event type can be mixed (sync + async)
+- Uses `loguru` for structured logging with event type and handler count
+
 **Event Flow:**
 ```
 WebSocket → CANDLE_CLOSED

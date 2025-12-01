@@ -14,6 +14,7 @@ from typing import Any, Callable, Dict, List
 from dataclasses import dataclass
 from datetime import datetime
 import asyncio
+from loguru import logger
 
 
 class EventType(Enum):
@@ -425,7 +426,7 @@ class EventBus:
                 event = await asyncio.wait_for(self._queue.get(), timeout=0.1)
 
                 # Dispatch event to all subscribers
-                self._dispatch(event)
+                await self._dispatch(event)
 
                 # Mark task as done
                 self._queue.task_done()
@@ -434,23 +435,64 @@ class EventBus:
                 continue
             except Exception as e:
                 # Log error but keep processing
-                print(f"Error processing event: {e}")
+                logger.error(f"Error processing event: {e}")
 
-    def _dispatch(self, event: Event) -> None:
+    async def _dispatch(self, event: Event) -> None:
         """
-        Dispatch an event to all subscribers.
+        Dispatch an event to all subscribers with timeout protection.
 
-        Internal method to call all registered callbacks for an event type.
+        Calls all registered callbacks for the event type, supporting both
+        synchronous and asynchronous handlers. Each handler is protected by
+        a 1.0s timeout to prevent hanging.
+
+        Async handlers are awaited directly with timeout protection.
+        Sync handlers are executed in a thread pool to avoid blocking the event loop.
 
         Args:
             event (Event): The event to dispatch
+
+        Examples:
+            >>> async def async_handler(event: Event):
+            ...     await asyncio.sleep(0.1)
+            ...
+            >>> def sync_handler(event: Event):
+            ...     time.sleep(0.1)
+            ...
+            >>> bus.subscribe(EventType.CANDLE_CLOSED, async_handler)
+            >>> bus.subscribe(EventType.CANDLE_CLOSED, sync_handler)
+            >>> await bus._dispatch(event)  # Both handlers called with timeout
         """
-        for callback in self._subscribers[event.event_type]:
+        handlers = self._subscribers[event.event_type]
+        handler_count = len(handlers)
+
+        logger.debug(
+            f"Dispatching event {event.event_type.value} to {handler_count} handler(s)"
+        )
+
+        for callback in handlers:
             try:
-                callback(event)
+                # Check if handler is async coroutine function
+                if asyncio.iscoroutinefunction(callback):
+                    # Async handler: await with timeout
+                    await asyncio.wait_for(callback(event), timeout=1.0)
+                else:
+                    # Sync handler: run in thread pool with timeout
+                    await asyncio.wait_for(
+                        asyncio.to_thread(callback, event),
+                        timeout=1.0
+                    )
+            except asyncio.TimeoutError:
+                # Handler exceeded timeout - log warning but continue
+                logger.warning(
+                    f"Handler {callback.__name__} for event {event.event_type.value} "
+                    f"exceeded 1.0s timeout"
+                )
             except Exception as e:
                 # Log error but don't break other subscribers
-                print(f"Error in event subscriber: {e}")
+                logger.error(
+                    f"Error in event subscriber {callback.__name__} "
+                    f"for {event.event_type.value}: {e}"
+                )
 
     async def stop(self) -> None:
         """
