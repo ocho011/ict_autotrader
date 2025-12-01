@@ -101,23 +101,127 @@ Order Manager → ORDER_PLACED / ORDER_FILLED
 Discord → Notification
 ```
 
-### 2. State Store (`src/core/state_store.py`)
+### 2. Trading Models (`src/core/models.py`)
+
+**Purpose:** Type-safe trading dataclasses with comprehensive validation
+
+**Implementation:** Pydantic BaseModel for superior validation and serialization
+
+**Data Models:**
+
+#### OrderBlock (Immutable)
+Represents institutional order zones (support/resistance levels):
+
+```python
+class OrderBlock(BaseModel):
+    model_config = {"frozen": True}  # Immutable
+
+    type: Literal["bullish", "bearish"]  # Direction
+    top: float                           # Upper boundary (>0, must be > bottom)
+    bottom: float                        # Lower boundary (>0)
+    timestamp: datetime                  # When detected
+    touches: int = 0                     # Touch count (≥0)
+    is_valid: bool = True                # Still valid?
+```
+
+**Validation:**
+- Top > bottom price range check
+- Positive prices required
+- Non-negative touch count
+- Type-safe direction with Literal
+
+#### FVG - Fair Value Gap (Immutable)
+Represents price inefficiencies to be filled:
+
+```python
+class FVG(BaseModel):
+    model_config = {"frozen": True}  # Immutable
+
+    type: Literal["bullish", "bearish"]  # Direction
+    top: float                           # Upper boundary (>0, must be > bottom)
+    bottom: float                        # Lower boundary (>0)
+    timestamp: datetime                  # When created
+    filled_percent: float = 0.0          # Fill % (0-100, auto-normalized to 2 decimals)
+    is_valid: bool = True                # Still tradeable?
+```
+
+**Validation:**
+- Top > bottom price range check
+- Filled percent: 0-100 range with 2-decimal precision
+- Automatic normalization of fill percentage
+
+#### Position (Mutable)
+Represents active trading positions:
+
+```python
+class Position(BaseModel):
+    # NOT frozen - allows trailing stop updates
+
+    symbol: str                          # Trading pair (uppercase, e.g., "BTCUSDT")
+    side: Literal["long", "short"]       # Direction
+    entry_price: float                   # Entry (>0)
+    size: float                          # Position size (>0)
+    stop_loss: float                     # SL level (>0)
+    take_profit: float                   # TP level (>0)
+    timestamp: datetime                  # When opened (auto-generated)
+
+    def risk_reward_ratio(self) -> float:
+        """Calculate R:R ratio (reward/risk)"""
+```
+
+**Validation:**
+- Symbol must be uppercase letters only
+- All prices and size must be positive
+- **Long positions:** stop_loss < entry_price, take_profit > entry_price
+- **Short positions:** stop_loss > entry_price, take_profit < entry_price
+- Risk/reward ratio calculation method
+
+**Design Decisions:**
+- **Pydantic over dataclasses:** Superior validation, JSON serialization, better error messages
+- **Immutability for historical data:** OrderBlock/FVG are frozen (historical facts)
+- **Mutability for live positions:** Position allows updates (trailing stops, partial exits)
+- **Field validators:** Declarative validation using `@model_validator` instead of `__post_init__`
+- **Type safety:** Literal types for direction/side fields
+
+**Usage Example:**
+```python
+from src.core.models import OrderBlock, FVG, Position
+from datetime import datetime
+
+# Create immutable order block
+ob = OrderBlock(
+    type="bullish",
+    top=45000.0,
+    bottom=44500.0,
+    timestamp=datetime.utcnow()
+)
+
+# Create position with validation
+pos = Position(
+    symbol="BTCUSDT",
+    side="long",
+    entry_price=45000.0,
+    size=0.1,
+    stop_loss=44500.0,  # Must be below entry for long
+    take_profit=46000.0  # Must be above entry for long
+)
+
+# Calculate risk/reward
+rr = pos.risk_reward_ratio()  # 2.0
+```
+
+### 3. State Store (`src/core/state_store.py`)
 
 **Purpose:** Centralized state management for patterns and positions
 
 **Managed State:**
 - Candle history (200 candles max)
-- Order Blocks (with touch counting and validation)
-- Fair Value Gaps (with fill tracking)
-- Current position
+- Order Blocks (using `OrderBlock` model)
+- Fair Value Gaps (using `FVG` model)
+- Current position (using `Position` model)
 - Daily P&L and trade count
 
-**Data Structures:**
-- `OrderBlock`: type, top, bottom, timestamp, touches, is_valid
-- `FVG`: type, top, bottom, timestamp, filled_percent, is_valid
-- `Position`: symbol, side, entry_price, size, stop_loss, take_profit
-
-### 3. WebSocket Client (`src/data/websocket_client.py`)
+### 4. WebSocket Client (`src/data/websocket_client.py`)
 
 **Purpose:** Real-time market data streaming from Binance
 
@@ -132,7 +236,7 @@ Discord → Notification
 - Interval: 15m (MVP)
 - Testnet mode enabled
 
-### 4. Strategy Engine (`src/strategy/signal_engine.py`)
+### 5. Strategy Engine (`src/strategy/signal_engine.py`)
 
 **Purpose:** Pattern detection and entry signal generation
 
@@ -153,7 +257,7 @@ Discord → Notification
 - Stop loss: OB boundary ± 0.2%
 - Take profit: 1% (bullish) / -1% (bearish)
 
-### 5. Order Manager (`src/execution/order_manager.py`)
+### 6. Order Manager (`src/execution/order_manager.py`)
 
 **Purpose:** Trade execution and position management
 
@@ -169,7 +273,7 @@ Discord → Notification
 - STOP_MARKET: Stop-loss
 - TAKE_PROFIT_MARKET: Take-profit
 
-### 6. Risk Manager (`src/execution/risk_manager.py`)
+### 7. Risk Manager (`src/execution/risk_manager.py`)
 
 **Purpose:** Position sizing and risk control
 
@@ -189,7 +293,7 @@ position_size = min(
 )
 ```
 
-### 7. Discord Notifier (`src/notification/discord.py`)
+### 8. Discord Notifier (`src/notification/discord.py`)
 
 **Purpose:** Real-time trade notifications via Discord webhook
 
