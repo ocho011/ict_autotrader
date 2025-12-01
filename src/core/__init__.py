@@ -9,8 +9,10 @@ This module provides the foundational components for the trading system:
 """
 
 from .event_processor import EventProcessor, EventOrchestrator
+from .state_store import StateStore
 
 __all__ = [
     "EventProcessor",
     "EventOrchestrator",
+    "StateStore",
 ]
