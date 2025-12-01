@@ -12,6 +12,7 @@ maintaining collections that can be queried by type and validity.
 
 from collections import deque
 from typing import Optional, List, Literal
+from loguru import logger
 from .models import OrderBlock, FVG
 
 
@@ -95,6 +96,7 @@ class StateStore:
             1
         """
         self.candles.append(candle)
+        self._cleanup_old_patterns()
 
     def add_order_block(self, ob: OrderBlock) -> None:
         """
@@ -150,6 +152,85 @@ class StateStore:
             1
         """
         self.fvgs.append(fvg)
+
+    def _cleanup_old_patterns(self, max_age_candles: int = 500) -> None:
+        """
+        Remove patterns older than max_age_candles threshold.
+
+        This method maintains pattern list sizes by removing OrderBlocks and FVGs
+        that are older than the specified candle age threshold. It prevents
+        unbounded memory growth while retaining recently relevant patterns.
+
+        Age is measured by candle count (index-based), not time duration.
+        Patterns are kept if their timestamp corresponds to a candle within
+        the last max_age_candles candles.
+
+        Args:
+            max_age_candles: Maximum candle age to retain patterns for.
+                Default 500 aligns with candle deque maxlen.
+                Patterns older than this many candles will be removed.
+
+        Examples:
+            >>> store = StateStore()
+            >>> # Add 600 candles and patterns
+            >>> for i in range(600):
+            ...     candle = {"timestamp": datetime.utcnow() + timedelta(minutes=i)}
+            ...     store.add_candle(candle)
+            ...     if i % 10 == 0:  # Add pattern every 10 candles
+            ...         ob = OrderBlock(
+            ...             type="bullish",
+            ...             top=45000.0,
+            ...             bottom=44500.0,
+            ...             timestamp=datetime.utcnow() + timedelta(minutes=i)
+            ...         )
+            ...         store.add_order_block(ob)
+            >>>
+            >>> # After cleanup, only last 500 candles worth of patterns remain
+            >>> store._cleanup_old_patterns(max_age_candles=500)
+        """
+        # Early return for invalid inputs or insufficient candles
+        if max_age_candles <= 0 or len(self.candles) == 0:
+            return
+
+        # Calculate cutoff index - patterns older than this are removed
+        cutoff_index = len(self.candles) - max_age_candles
+
+        # If cutoff is non-positive, all candles are within threshold
+        if cutoff_index <= 0:
+            return
+
+        # Get cutoff timestamp from the candle at cutoff_index
+        # Handle missing timestamp field gracefully
+        cutoff_candle = self.candles[cutoff_index]
+        if "timestamp" not in cutoff_candle:
+            # If candles don't have timestamps, we can't do age-based cleanup
+            return
+
+        cutoff_timestamp = cutoff_candle["timestamp"]
+
+        # Count patterns before cleanup for logging
+        old_ob_count = len(self.order_blocks)
+        old_fvg_count = len(self.fvgs)
+
+        # Filter patterns: keep only those with timestamp >= cutoff_timestamp
+        self.order_blocks = [
+            ob for ob in self.order_blocks
+            if ob.timestamp >= cutoff_timestamp
+        ]
+        self.fvgs = [
+            fvg for fvg in self.fvgs
+            if fvg.timestamp >= cutoff_timestamp
+        ]
+
+        # Log cleanup activity at DEBUG level if patterns were removed
+        removed_obs = old_ob_count - len(self.order_blocks)
+        removed_fvgs = old_fvg_count - len(self.fvgs)
+
+        if removed_obs > 0 or removed_fvgs > 0:
+            logger.debug(
+                f"Pattern cleanup: removed {removed_obs} OrderBlocks, "
+                f"{removed_fvgs} FVGs (threshold: {max_age_candles} candles)"
+            )
 
     def get_valid_order_blocks(
         self,
