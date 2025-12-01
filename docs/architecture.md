@@ -74,8 +74,10 @@ bus.emit(event)     # Calls all subscribers immediately
 **Async Queue Architecture:**
 - Non-blocking event publishing via `asyncio.Queue`
 - Background event processing loop using `asyncio.create_task()`
-- Graceful shutdown ensures all queued events are processed before stopping
+- Graceful shutdown with 5-second timeout ensures no event loss
+- Robust error handling with try-except-finally pattern for queue task tracking
 - Properties: `is_running` (bool), `queue_size` (int)
+- Comprehensive error logging with Loguru structured context
 
 **Event Dispatching with Timeout Protection:**
 - Supports both synchronous and asynchronous handlers

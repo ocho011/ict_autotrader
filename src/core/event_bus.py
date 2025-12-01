@@ -418,9 +418,10 @@ class EventBus:
         Internal event processing loop.
 
         Continuously reads events from the queue and dispatches them to subscribers.
-        Runs until _running flag is set to False.
+        Runs until _running flag is set to False AND queue is empty.
         """
-        while self._running:
+        while True:
+            event = None
             try:
                 # Wait for event with timeout to allow checking _running flag
                 event = await asyncio.wait_for(self._queue.get(), timeout=0.1)
@@ -428,14 +429,18 @@ class EventBus:
                 # Dispatch event to all subscribers
                 await self._dispatch(event)
 
-                # Mark task as done
-                self._queue.task_done()
             except asyncio.TimeoutError:
-                # No event available, continue loop
+                # No event available - check if we should exit
+                if not self._running and self._queue.empty():
+                    break
                 continue
             except Exception as e:
                 # Log error but keep processing
                 logger.error(f"Error processing event: {e}")
+            finally:
+                # Always mark task as done if we got an event
+                if event is not None:
+                    self._queue.task_done()
 
     async def _dispatch(self, event: Event) -> None:
         """
@@ -500,10 +505,10 @@ class EventBus:
 
         This method gracefully shuts down the event bus by:
         1. Setting the running flag to False
-        2. Waiting for all queued events to be processed
+        2. Waiting for all queued events to be processed (with timeout)
         3. Cancelling the processing task
 
-        No events are lost during shutdown.
+        No events are lost during shutdown (unless timeout is reached).
 
         Examples:
             >>> bus = EventBus()
@@ -516,8 +521,11 @@ class EventBus:
 
         self._running = False
 
-        # Wait for all queued events to be processed
-        await self._queue.join()
+        # Wait for all queued events to be processed (with 5s timeout)
+        try:
+            await asyncio.wait_for(self._queue.join(), timeout=5.0)
+        except asyncio.TimeoutError:
+            logger.warning("Event queue did not drain within 5s timeout")
 
         # Cancel the processing task
         if self._task:

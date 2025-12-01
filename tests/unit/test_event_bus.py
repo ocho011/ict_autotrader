@@ -187,6 +187,24 @@ class TestEvent:
         assert isinstance(event.data['list'], list)
         assert isinstance(event.data['dict'], dict)
 
+    def test_event_validation_invalid_event_type(self):
+        """Test that Event creation with invalid event_type raises TypeError"""
+        with pytest.raises(TypeError, match="event_type must be EventType enum"):
+            Event(
+                event_type="not_an_enum",  # String instead of EventType
+                data={},
+                source='test'
+            )
+
+    def test_event_validation_invalid_data_type(self):
+        """Test that Event creation with invalid data type raises TypeError"""
+        with pytest.raises(TypeError, match="data must be dict"):
+            Event(
+                event_type=EventType.ERROR,
+                data="not_a_dict",  # String instead of dict
+                source='test'
+            )
+
 
 class TestEventBus:
     """Test cases for EventBus implementation"""

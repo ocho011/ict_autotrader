@@ -95,7 +95,7 @@
         "dependencies": [
           "1"
         ],
-        "status": "in-progress",
+        "status": "done",
         "subtasks": [
           {
             "id": 1,
@@ -142,9 +142,10 @@
               3
             ],
             "details": "In EventBus class, add _queue attribute as asyncio.Queue() in __init__. Implement async publish(event: Event) method that calls _queue.put_nowait(event) for non-blocking publish. Add _running flag to control event loop. Implement start() async method that creates event processing loop: while _running, await _queue.get(), call _dispatch(event), handle queue.task_done(). Add stop() method to set _running=False and await queue processing completion.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Unit test publish adds events to queue without blocking. Test start() processes events from queue. Verify stop() gracefully shuts down processing loop. Test queue doesn't lose events during shutdown. Confirm asyncio integration works correctly.",
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2025-11-30T22:40:52.978Z"
           },
           {
             "id": 5,
@@ -154,9 +155,10 @@
               4
             ],
             "details": "Implement _dispatch(event: Event) async method in EventBus. Get handlers from _subscribers[event.type]. For each handler, check if asyncio.iscoroutinefunction(handler). If async, use await asyncio.wait_for(handler(event), timeout=1.0). If sync, wrap in asyncio.create_task(asyncio.to_thread(handler, event)) with wait_for timeout. Catch asyncio.TimeoutError and log warning. Use loguru for dispatching logs showing event type and handler count.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Unit test async handlers are awaited correctly. Test sync handlers execute without blocking event loop. Verify 1.0s timeout prevents hanging handlers. Test both sync and async handlers can be mixed for same event type. Confirm timeout errors are logged but don't crash dispatcher.",
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2025-12-01T10:27:52.955Z"
           },
           {
             "id": 6,
@@ -166,15 +168,16 @@
               5
             ],
             "details": "Wrap all handler calls in try-except blocks to catch and log exceptions without stopping event processing. Add loguru logging at key points: event published, handler called, handler completed, handler error, timeout. Configure loguru to use structured logging with context (event_type, handler_name). Create tests/core/test_event_bus.py with pytest test cases covering: all event types, event validation, subscribe/unsubscribe, publish/dispatch flow, sync/async handlers, timeout handling, error handling, graceful shutdown, event ordering preservation.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Run pytest with coverage report targeting >90% coverage for event_bus.py. Test failure scenarios: handler raises exception, handler times out, invalid event types. Verify system continues processing after handler errors. Test concurrent event publishing. Validate logs contain expected structured data.",
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2025-12-01T11:21:34.624Z"
           }
         ],
         "complexity": 6,
         "recommendedSubtasks": 6,
         "expansionPrompt": "Break down Event Bus implementation into: (1) Create EventType enum with all event types, (2) Implement Event dataclass with validation, (3) Build subscriber management (subscribe/unsubscribe), (4) Implement async event queue and publish mechanism, (5) Create event dispatching with timeout handling and sync/async handler support, (6) Add comprehensive error handling, logging, and unit tests",
-        "updatedAt": "2025-11-30T22:24:46.316Z"
+        "updatedAt": "2025-12-01T11:21:34.624Z"
       },
       {
         "id": "3",
@@ -942,9 +945,9 @@
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2025-11-30T22:24:46.317Z",
+      "lastModified": "2025-12-01T11:21:34.625Z",
       "taskCount": 10,
-      "completedCount": 1,
+      "completedCount": 2,
       "tags": [
         "master"
       ]
