@@ -210,7 +210,171 @@ pos = Position(
 rr = pos.risk_reward_ratio()  # 2.0
 ```
 
-### 3. State Store (`src/core/state_store.py`)
+### 3. Event Processor Infrastructure (`src/core/event_processor.py`)
+
+**Purpose:** Base infrastructure for event-driven processor lifecycle management
+
+The event processor framework provides standardized lifecycle management for all event-processing components in the system, ensuring consistent startup/shutdown behavior and event handler registration.
+
+**Key Components:**
+
+#### EventProcessor (Abstract Base Class)
+Base class for all event processors with standardized lifecycle:
+
+```python
+class EventProcessor(ABC):
+    """
+    Abstract base class for event processors with lifecycle management.
+
+    Provides:
+    - Standardized start/stop lifecycle
+    - Handler registration/unregistration
+    - Idempotent state transitions
+    - Subclass hooks for custom initialization
+    """
+
+    def __init__(self, event_bus: EventBus):
+        self.event_bus = event_bus
+        self._is_running = False
+
+    async def start(self) -> None:
+        """Start processor: _on_start() → _register_handlers()"""
+
+    async def stop(self) -> None:
+        """Stop processor: _unregister_handlers() → _on_stop()"""
+
+    # Abstract methods to implement
+    @abstractmethod
+    def _register_handlers(self) -> None:
+        """Subscribe to EventBus events"""
+
+    @abstractmethod
+    def _unregister_handlers(self) -> None:
+        """Unsubscribe from EventBus events"""
+
+    # Optional hooks
+    async def _on_start(self) -> None:
+        """Hook for startup initialization (optional)"""
+
+    async def _on_stop(self) -> None:
+        """Hook for cleanup (optional)"""
+```
+
+**Lifecycle Flow:**
+```
+start() → _on_start() → _register_handlers() → is_running = True
+stop()  → _unregister_handlers() → _on_stop() → is_running = False
+```
+
+**Design Features:**
+- **Idempotent Operations:** Multiple start/stop calls are safe (no-op if already in state)
+- **Template Method Pattern:** Enforces consistent lifecycle across all processors
+- **Hook Methods:** `_on_start()` and `_on_stop()` for processor-specific initialization
+- **State Management:** `is_running` property tracks processor state
+
+#### EventOrchestrator
+Coordinates multiple processors with centralized lifecycle management:
+
+```python
+class EventOrchestrator:
+    """
+    Orchestrates multiple event processors with centralized lifecycle.
+
+    Features:
+    - Bulk start/stop operations
+    - Reverse-order shutdown (LIFO)
+    - Error handling without cascade failures
+    - Status tracking and monitoring
+    """
+
+    def __init__(self, event_bus: EventBus):
+        self.event_bus = event_bus
+        self._processors: List[EventProcessor] = []
+
+    def register(self, processor: EventProcessor) -> None:
+        """Register processor for orchestration"""
+
+    async def start_all(self) -> None:
+        """Start all processors in registration order"""
+
+    async def stop_all(self) -> None:
+        """Stop all processors in reverse order (LIFO)"""
+```
+
+**Key Behaviors:**
+- **LIFO Shutdown:** Processors stop in reverse registration order (dependencies first)
+- **Error Isolation:** Failures in one processor don't prevent others from starting/stopping
+- **Centralized Control:** Single point for system-wide processor management
+- **Monitoring:** `processor_count` and `running_count` properties for status tracking
+
+**Usage Example:**
+```python
+from src.core.event_bus import EventBus
+from src.core.event_processor import EventOrchestrator
+from src.processors import PatternProcessor, SignalProcessor, OrderProcessor
+
+# Create event bus
+bus = EventBus()
+await bus.start()
+
+# Create orchestrator
+orchestrator = EventOrchestrator(bus)
+
+# Register processors in dependency order
+orchestrator.register(PatternProcessor(bus))
+orchestrator.register(SignalProcessor(bus))
+orchestrator.register(OrderProcessor(bus))
+
+# Start all processors
+await orchestrator.start_all()
+
+# System running...
+
+# Graceful shutdown (reverse order)
+await orchestrator.stop_all()
+await bus.stop()
+```
+
+**Processor Implementation Example:**
+```python
+class PatternProcessor(EventProcessor):
+    def __init__(self, event_bus: EventBus, config: Optional[Dict] = None):
+        super().__init__(event_bus)
+        self._config = config or {}
+        self._candle_history = None
+
+    async def _on_start(self) -> None:
+        """Initialize state on startup"""
+        self._candle_history = deque(maxlen=100)
+        logger.info("PatternProcessor initialized")
+
+    def _register_handlers(self) -> None:
+        """Subscribe to events"""
+        self.event_bus.subscribe(EventType.CANDLE_CLOSED, self._on_candle_closed)
+
+    def _unregister_handlers(self) -> None:
+        """Unsubscribe from events"""
+        self.event_bus.unsubscribe(EventType.CANDLE_CLOSED, self._on_candle_closed)
+
+    async def _on_stop(self) -> None:
+        """Cleanup state on shutdown"""
+        if self._candle_history:
+            self._candle_history.clear()
+        logger.info("PatternProcessor cleaned up")
+
+    async def _on_candle_closed(self, event: Event) -> None:
+        """Handle candle events"""
+        # Processing logic...
+```
+
+**Benefits:**
+- **Consistent Lifecycle:** All processors follow same startup/shutdown pattern
+- **Separation of Concerns:** Business logic separate from lifecycle management
+- **Testability:** Easy to test processors in isolation
+- **Maintainability:** Clear structure makes system easier to understand and modify
+- **Error Recovery:** Graceful degradation when processors fail
+
+### 4. State Store (`src/core/state_store.py`)
 
 **Purpose:** Centralized state management for patterns and positions
 

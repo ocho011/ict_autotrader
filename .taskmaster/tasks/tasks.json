@@ -189,17 +189,18 @@
         "dependencies": [
           "1"
         ],
-        "status": "pending",
+        "status": "in-progress",
         "subtasks": [
           {
             "id": 1,
             "title": "Define dataclasses for OrderBlock, FVG, and Position with validation",
             "description": "Create dataclasses for OrderBlock, FVG, and Position with proper type hints, field validation, and immutability where appropriate",
             "dependencies": [],
-            "details": "In src/core/state_store.py:\n- Define OrderBlock dataclass with fields: type (Literal['bullish', 'bearish']), top (float), bottom (float), timestamp (datetime), touches (int), is_valid (bool)\n- Define FVG dataclass with fields: type (Literal['bullish', 'bearish']), top (float), bottom (float), timestamp (datetime), filled_percent (float), is_valid (bool)\n- Define Position dataclass with fields: symbol (str), side (Literal['long', 'short']), entry_price (float), size (float), stop_loss (float), take_profit (float), timestamp (datetime)\n- Add __post_init__ validation methods to ensure: top > bottom, filled_percent in [0, 100], size > 0, etc.\n- Use frozen=True for immutable dataclasses where appropriate\n- Add type hints for all fields using proper types from typing module",
-            "status": "pending",
+            "details": "In src/core/state_store.py:\n- Define OrderBlock dataclass with fields: type (Literal['bullish', 'bearish']), top (float), bottom (float), timestamp (datetime), touches (int), is_valid (bool)\n- Define FVG dataclass with fields: type (Literal['bullish', 'bearish']), top (float), bottom (float), timestamp (datetime), filled_percent (float), is_valid (bool)\n- Define Position dataclass with fields: symbol (str), side (Literal['long', 'short']), entry_price (float), size (float), stop_loss (float), take_profit (float), timestamp (datetime)\n- Add __post_init__ validation methods to ensure: top > bottom, filled_percent in [0, 100], size > 0, etc.\n- Use frozen=True for immutable dataclasses where appropriate\n- Add type hints for all fields using proper types from typing module\n<info added on 2025-12-01T11:41:55.201Z>\nI need to analyze the codebase to understand the current implementation and provide a comprehensive subtask update.Based on my analysis of the codebase and test execution, here's the comprehensive subtask update:\n\nStatus: ✅ FULLY IMPLEMENTED AND TESTED\n\nFile created: src/core/models.py (replacing planned src/core/state_store.py location)\nTests created: tests/unit/core/test_models.py\nTest results: All 33 tests passing in 0.06s\n\nImplementation highlights:\n• Migrated from standard dataclasses to Pydantic BaseModel for superior validation framework\n• OrderBlock and FVG configured as frozen (immutable) using model_config - appropriate for historical trading data that shouldn't change\n• Position remains mutable to support trailing stop-loss updates and partial position modifications\n• All validation implemented using Pydantic's @model_validator decorator instead of __post_init__\n• Comprehensive type safety with Literal types and Field constraints\n\nKey technical deviations from original spec:\n• Used Pydantic BaseModel instead of @dataclass decorator (provides better validation, serialization, and error messages)\n• Validation uses @model_validator(mode=\"after\") instead of __post_init__ (Pydantic pattern)\n• Added Field() descriptors with constraints (gt=0, ge=0, le=100) for compile-time validation\n• Added risk_reward_ratio() method to Position for trading analytics\n• Symbol validation includes regex pattern r\"^[A-Z]+$\" to enforce uppercase trading pairs\n\nValidation coverage verified:\n• Price range integrity (top > bottom) for OrderBlock and FVG\n• Filled percentage bounds (0-100) with automatic 2-decimal normalization for FVG\n• Position size constraints (> 0)\n• Stop-loss logic validation (below entry for long, above entry for short)\n• Take-profit logic validation (above entry for long, below entry for short)\n• Type constraints via Literal for direction/side fields\n• Immutability enforcement for OrderBlock and FVG (frozen=True)\n\nTest organization: 3 test classes (TestOrderBlock, TestFVG, TestPosition) with comprehensive edge case coverage including boundary values, negative values, invalid types, and business logic validation.\n</info added on 2025-12-01T11:41:55.201Z>",
+            "status": "done",
             "testStrategy": "Unit test dataclass instantiation with valid data. Test validation logic raises ValueError for invalid inputs (top < bottom, negative size, invalid type strings). Verify immutability for frozen dataclasses. Test default values and optional fields.",
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2025-12-01T11:42:01.251Z"
           },
           {
             "id": 2,
@@ -209,9 +210,10 @@
               1
             ],
             "details": "In src/core/state_store.py:\n- Create StateStore class with __init__ method\n- Initialize candles: deque(maxlen=200) for FIFO storage with automatic old candle removal\n- Initialize order_blocks: List[OrderBlock] = []\n- Initialize fvgs: List[FVG] = []\n- Initialize current_position: Optional[Position] = None\n- Initialize daily_pnl: float = 0.0\n- Initialize trade_count: int = 0\n- Add type hints for all attributes\n- Import deque from collections\n- Ensure StateStore can be instantiated without parameters (use default values)",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Unit test StateStore instantiation. Verify candles deque has maxlen=200. Test that adding 201 candles automatically removes the oldest. Verify all attributes initialize with correct default values and types. Test attribute access and modification.",
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2025-12-01T16:07:44.557Z"
           },
           {
             "id": 3,
@@ -252,7 +254,8 @@
         ],
         "complexity": 5,
         "recommendedSubtasks": 5,
-        "expansionPrompt": "Break down State Store into: (1) Define dataclasses for OrderBlock, FVG, and Position with validation, (2) Implement StateStore with candle deque and pattern storage, (3) Create pattern management methods (add, get, filter by type), (4) Implement cleanup logic for old/invalid patterns, (5) Add comprehensive unit tests for all methods and edge cases"
+        "expansionPrompt": "Break down State Store into: (1) Define dataclasses for OrderBlock, FVG, and Position with validation, (2) Implement StateStore with candle deque and pattern storage, (3) Create pattern management methods (add, get, filter by type), (4) Implement cleanup logic for old/invalid patterns, (5) Add comprehensive unit tests for all methods and edge cases",
+        "updatedAt": "2025-12-01T16:07:44.557Z"
       },
       {
         "id": "4",
@@ -945,7 +948,7 @@
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2025-12-01T11:21:34.625Z",
+      "lastModified": "2025-12-01T16:07:44.558Z",
       "taskCount": 10,
       "completedCount": 2,
       "tags": [

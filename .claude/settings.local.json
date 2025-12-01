@@ -12,7 +12,8 @@
       "Bash(task-master set-status:*)",
       "Bash(python3 -m pip:*)",
       "Bash(python3:*)",
-      "Bash(pytest:*)"
+      "Bash(pytest:*)",
+      "mcp__smithery-ai-server-sequential-thinking__sequentialthinking"
     ]
   },
   "disabledMcpjsonServers": [
