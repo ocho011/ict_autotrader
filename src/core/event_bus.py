@@ -254,7 +254,7 @@ class EventBus:
         self._subscribers: Dict[EventType, List[Callable[[Event], None]]] = {
             event_type: [] for event_type in EventType
         }
-        self._queue: asyncio.Queue = asyncio.Queue()
+        self._queue: asyncio.Queue = None  # Created in start() to use correct event loop
         self._running: bool = False
         self._task: asyncio.Task = None
 
@@ -378,6 +378,7 @@ class EventBus:
 
         Raises:
             TypeError: If event is not an Event instance
+            RuntimeError: If event bus is not started
 
         Examples:
             >>> bus = EventBus()
@@ -387,6 +388,9 @@ class EventBus:
         """
         if not isinstance(event, Event):
             raise TypeError(f"event must be Event instance, got {type(event)}")
+
+        if self._queue is None:
+            raise RuntimeError("Event bus not started. Call start() first.")
 
         # Non-blocking queue insertion
         self._queue.put_nowait(event)
@@ -410,6 +414,8 @@ class EventBus:
         if self._running:
             return  # Already running
 
+        # Create queue in the current event loop to avoid "different loop" errors
+        self._queue = asyncio.Queue()
         self._running = True
         self._task = asyncio.create_task(self._process_events())
 
@@ -551,6 +557,8 @@ class EventBus:
         Get the current number of events in the queue.
 
         Returns:
-            int: Number of events waiting to be processed
+            int: Number of events waiting to be processed (0 if not started)
         """
+        if self._queue is None:
+            return 0
         return self._queue.qsize()

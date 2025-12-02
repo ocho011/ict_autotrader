@@ -13,7 +13,8 @@
       "Bash(python3 -m pip:*)",
       "Bash(python3:*)",
       "Bash(pytest:*)",
-      "mcp__smithery-ai-server-sequential-thinking__sequentialthinking"
+      "mcp__smithery-ai-server-sequential-thinking__sequentialthinking",
+      "Bash(pkill:*)"
     ]
   },
   "disabledMcpjsonServers": [
