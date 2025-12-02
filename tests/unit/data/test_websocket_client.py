@@ -376,3 +376,180 @@ class TestWebSocketProperties:
         repr_str = repr(ws)
         assert "connected" in repr_str
         assert "testnet" in repr_str
+
+
+class TestKlineStreaming:
+    """Test kline data streaming functionality."""
+
+    @pytest.fixture
+    def ws(self):
+        """Create WebSocket instance for testing."""
+        event_bus = EventBus()
+        ws = BinanceWebSocket(event_bus, "BTCUSDT", "1m")
+        # Mock connection
+        ws.client = AsyncMock()
+        ws.bsm = Mock()
+        return ws
+
+    @pytest.mark.asyncio
+    async def test_start_kline_stream_not_connected(self):
+        """Test that start_kline_stream fails if not connected."""
+        event_bus = EventBus()
+        ws = BinanceWebSocket(event_bus, "BTCUSDT", "1m")
+        # Don't set client/bsm - ws is not connected
+
+        with pytest.raises(RuntimeError, match="WebSocket is not connected"):
+            await ws.start_kline_stream()
+
+    @pytest.mark.asyncio
+    async def test_handle_kline_closed_candle(self, ws):
+        """Test processing a closed kline message."""
+        # Start event bus for async publishing
+        await ws.event_bus.start()
+
+        # Track emitted events
+        emitted_events = []
+
+        async def capture_event(event):
+            emitted_events.append(event)
+
+        from src.core.event_bus import EventType
+        ws.event_bus.subscribe(EventType.CANDLE_CLOSED, capture_event)
+
+        # Create closed kline message
+        kline_msg = {
+            'e': 'kline',
+            'E': 1234567890000,
+            'k': {
+                't': 1234567860000,  # Start time
+                'T': 1234567920000,  # Close time
+                'o': '45000.00',
+                'h': '45100.00',
+                'l': '44900.00',
+                'c': '45050.00',
+                'v': '100.5',
+                'x': True  # Closed candle
+            }
+        }
+
+        # Process the message
+        await ws._handle_kline(kline_msg)
+
+        # Give event bus time to process
+        import asyncio
+        await asyncio.sleep(0.1)
+
+        # Stop event bus
+        await ws.event_bus.stop()
+
+        # Verify event was emitted
+        assert len(emitted_events) == 1
+        event = emitted_events[0]
+
+        assert event.event_type == EventType.CANDLE_CLOSED
+        assert event.data['symbol'] == 'BTCUSDT'
+        assert event.data['interval'] == '1m'
+        assert event.data['open'] == 45000.0
+        assert event.data['high'] == 45100.0
+        assert event.data['low'] == 44900.0
+        assert event.data['close'] == 45050.0
+        assert event.data['volume'] == 100.5
+
+    @pytest.mark.asyncio
+    async def test_handle_kline_open_candle_ignored(self, ws):
+        """Test that open (not closed) klines are ignored."""
+        # Start event bus
+        await ws.event_bus.start()
+
+        # Track emitted events
+        emitted_events = []
+
+        async def capture_event(event):
+            emitted_events.append(event)
+
+        from src.core.event_bus import EventType
+        ws.event_bus.subscribe(EventType.CANDLE_CLOSED, capture_event)
+
+        # Create open kline message (x=False)
+        kline_msg = {
+            'e': 'kline',
+            'k': {
+                'o': '45000.00',
+                'h': '45100.00',
+                'l': '44900.00',
+                'c': '45050.00',
+                'v': '100.5',
+                'x': False  # Open candle - should be ignored
+            }
+        }
+
+        # Process the message
+        await ws._handle_kline(kline_msg)
+
+        # Give event bus time to process
+        import asyncio
+        await asyncio.sleep(0.1)
+
+        # Stop event bus
+        await ws.event_bus.stop()
+
+        # Verify no event was emitted
+        assert len(emitted_events) == 0
+
+    @pytest.mark.asyncio
+    async def test_handle_kline_malformed_message(self, ws):
+        """Test that malformed kline messages are handled gracefully."""
+        # Start event bus
+        await ws.event_bus.start()
+
+        # Malformed message (missing 'k' field)
+        malformed_msg = {'e': 'kline'}
+
+        # Should not raise exception
+        await ws._handle_kline(malformed_msg)
+
+        # Give event bus time to process
+        import asyncio
+        await asyncio.sleep(0.1)
+
+        await ws.event_bus.stop()
+
+    @pytest.mark.asyncio
+    async def test_handle_kline_invalid_price_data(self, ws):
+        """Test handling of invalid price data in kline message."""
+        # Start event bus
+        await ws.event_bus.start()
+
+        # Track emitted events
+        emitted_events = []
+
+        async def capture_event(event):
+            emitted_events.append(event)
+
+        from src.core.event_bus import EventType
+        ws.event_bus.subscribe(EventType.CANDLE_CLOSED, capture_event)
+
+        # Message with invalid price data
+        kline_msg = {
+            'e': 'kline',
+            'k': {
+                'o': 'invalid',  # Invalid price string
+                'h': '45100.00',
+                'l': '44900.00',
+                'c': '45050.00',
+                'v': '100.5',
+                'x': True
+            }
+        }
+
+        # Should handle error gracefully without crashing
+        await ws._handle_kline(kline_msg)
+
+        # Give event bus time to process
+        import asyncio
+        await asyncio.sleep(0.1)
+
+        await ws.event_bus.stop()
+
+        # Event should not be emitted due to error
+        assert len(emitted_events) == 0

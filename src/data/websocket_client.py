@@ -333,6 +333,156 @@ class BinanceWebSocket:
         """
         return self._is_testnet
 
+    async def start_kline_stream(self) -> None:
+        """
+        Start streaming kline (candlestick) data from Binance WebSocket.
+
+        This method establishes a WebSocket connection and continuously receives
+        kline data updates. It runs indefinitely until an error occurs or the
+        connection is closed.
+
+        The method uses BinanceSocketManager's kline_futures_socket as a context
+        manager to ensure proper resource cleanup. Each received kline message
+        is processed through _handle_kline().
+
+        Prerequisites:
+            - Must call connect() before calling this method
+            - AsyncClient and BinanceSocketManager must be initialized
+
+        Raises:
+            RuntimeError: If client is not connected
+            Exception: If stream initialization or message processing fails
+
+        Examples:
+            >>> ws = BinanceWebSocket(event_bus, 'BTCUSDT', '15m')
+            >>> await ws.connect()
+            >>> await ws.start_kline_stream()  # Runs indefinitely
+        """
+        # Validate connection state
+        if not self.is_connected:
+            raise RuntimeError(
+                "WebSocket is not connected. Call connect() before start_kline_stream()"
+            )
+
+        logger.info(
+            f"Starting kline stream for {self.symbol} ({self.interval})"
+        )
+
+        try:
+            # Use BinanceSocketManager's kline futures socket as context manager
+            async with self.bsm.kline_futures_socket(
+                symbol=self.symbol,
+                interval=self.interval
+            ) as stream:
+                logger.info(
+                    f"Successfully connected to kline stream for {self.symbol} ({self.interval})"
+                )
+
+                # Infinite loop to receive messages
+                while True:
+                    # Receive message from stream
+                    msg = await stream.recv()
+
+                    # Process the kline message
+                    await self._handle_kline(msg)
+
+        except Exception as e:
+            # Log connection/streaming errors
+            logger.error(
+                f"Error in kline stream for {self.symbol} ({self.interval}): {e}"
+            )
+            raise
+
+    async def _handle_kline(self, msg: dict) -> None:
+        """
+        Process a kline message received from Binance WebSocket.
+
+        This method extracts kline data from the WebSocket message and emits
+        a CANDLE_CLOSED event when a candlestick period completes (is_closed=True).
+
+        The kline message structure follows Binance WebSocket API format:
+        {
+            'e': 'kline',
+            'E': event_time,
+            'k': {
+                't': kline_start_time,
+                'T': kline_close_time,
+                'o': open_price,
+                'h': high_price,
+                'l': low_price,
+                'c': close_price,
+                'v': volume,
+                'x': is_closed,
+                ...
+            }
+        }
+
+        Args:
+            msg (dict): Raw kline message from Binance WebSocket
+
+        Examples:
+            >>> msg = {
+            ...     'e': 'kline',
+            ...     'k': {
+            ...         'o': '45000.0',
+            ...         'h': '45100.0',
+            ...         'l': '44900.0',
+            ...         'c': '45050.0',
+            ...         'v': '100.5',
+            ...         'x': True
+            ...     }
+            ... }
+            >>> await ws._handle_kline(msg)  # Emits CANDLE_CLOSED event
+        """
+        try:
+            # Extract kline data from message
+            kline = msg.get('k', {})
+
+            # Only process closed candles (completed periods)
+            is_closed = kline.get('x', False)
+
+            if is_closed:
+                # Extract OHLCV data
+                open_price = float(kline.get('o', 0))
+                high_price = float(kline.get('h', 0))
+                low_price = float(kline.get('l', 0))
+                close_price = float(kline.get('c', 0))
+                volume = float(kline.get('v', 0))
+                close_time = kline.get('T', 0)
+
+                # Create event data payload
+                event_data = {
+                    'symbol': self.symbol,
+                    'interval': self.interval,
+                    'open': open_price,
+                    'high': high_price,
+                    'low': low_price,
+                    'close': close_price,
+                    'volume': volume,
+                    'timestamp': datetime.fromtimestamp(close_time / 1000)
+                }
+
+                # Emit CANDLE_CLOSED event to EventBus
+                from src.core.event_bus import Event, EventType
+                event = Event(
+                    event_type=EventType.CANDLE_CLOSED,
+                    data=event_data,
+                    source='BinanceWebSocket'
+                )
+
+                await self.event_bus.publish(event)
+
+                logger.debug(
+                    f"Candle closed for {self.symbol} ({self.interval}): "
+                    f"O={open_price} H={high_price} L={low_price} C={close_price} V={volume}"
+                )
+
+        except Exception as e:
+            logger.error(
+                f"Error handling kline message for {self.symbol}: {e}"
+            )
+            # Don't re-raise - continue processing other messages
+
     def __repr__(self) -> str:
         """Return detailed representation of WebSocket client."""
         status = "connected" if self.is_connected else "disconnected"
