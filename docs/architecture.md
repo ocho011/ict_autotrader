@@ -214,12 +214,70 @@ Initialize → Load Config → Load Credentials → Create AsyncClient → Initi
    # WebSocketConfigError: 'use_testnet' must be boolean (true/false)
    ```
 
-**Test Coverage:** 30 unit tests covering all functionality
+**Kline Streaming Implementation:**
+
+The WebSocket client includes complete kline (candlestick) streaming functionality:
+
+```python
+# Start streaming kline data
+await ws.connect()  # Must connect first
+await ws.start_kline_stream()  # Runs indefinitely, processing klines
+
+# Stream lifecycle:
+# 1. Validates connection state (raises RuntimeError if not connected)
+# 2. Creates async context manager via bsm.kline_futures_socket()
+# 3. Enters infinite loop to receive messages
+# 4. Processes each kline message via _handle_kline()
+# 5. Emits CANDLE_CLOSED events when candles close
+```
+
+**Message Processing (_handle_kline):**
+- Filters for closed candles only (`x=True` flag)
+- Extracts OHLCV data: open, high, low, close, volume
+- Converts timestamps from milliseconds to datetime
+- Creates CANDLE_CLOSED events with complete candle data
+- Publishes events asynchronously via EventBus
+- Handles errors gracefully without crashing stream
+
+**Event Publishing:**
+```python
+# Event data structure for CANDLE_CLOSED
+event_data = {
+    'symbol': 'BTCUSDT',
+    'interval': '15m',
+    'open': 45000.0,
+    'high': 45100.0,
+    'low': 44900.0,
+    'close': 45050.0,
+    'volume': 100.5,
+    'timestamp': datetime(2025, 12, 3, ...)
+}
+
+# Published via EventBus for downstream processing
+await event_bus.publish(Event(
+    event_type=EventType.CANDLE_CLOSED,
+    data=event_data,
+    source='BinanceWebSocket'
+))
+```
+
+**Logging:**
+- INFO level: Stream connection status
+- DEBUG level: Individual candle close events with OHLCV data
+- ERROR level: Stream errors and message processing failures
+
+**Test Coverage:** 35 unit tests covering all functionality
 - Initialization validation
 - Configuration loading (testnet/mainnet)
 - Credential loading and validation
 - Connection lifecycle
 - Error handling
+- Kline streaming and message processing (5 tests)
+  - Connection state validation
+  - Closed candle event emission
+  - Open candle filtering (ignored)
+  - Malformed message handling
+  - Invalid price data error handling
 
 ### 3. Trading Models (`src/core/models.py`)
 
