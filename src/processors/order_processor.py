@@ -147,7 +147,7 @@ class OrderProcessor(EventProcessor):
                 return
 
             # Emit ORDER_PLACED event
-            await self._emit_order_placed(order)
+            await self._publish_order_placed(order)
 
             # Simulate order fill (MVP)
             if self._config["enable_simulation"]:
@@ -155,7 +155,7 @@ class OrderProcessor(EventProcessor):
 
         except Exception as e:
             logger.error(f"Error handling ENTRY_SIGNAL: {e}")
-            await self._emit_error(e, "entry_signal_processing")
+            await self._publish_error(e, "entry_signal_processing")
 
     def _validate_signal(self, signal: Dict[str, Any]) -> bool:
         """
@@ -269,9 +269,9 @@ class OrderProcessor(EventProcessor):
             logger.error(f"Failed to place order: {e}")
             return None
 
-    async def _emit_order_placed(self, order: Dict[str, Any]) -> None:
+    async def _publish_order_placed(self, order: Dict[str, Any]) -> None:
         """
-        Emit ORDER_PLACED event.
+        Publish ORDER_PLACED event to queue.
 
         Args:
             order (Dict): Order data
@@ -284,10 +284,10 @@ class OrderProcessor(EventProcessor):
             )
 
             await self.event_bus.publish(event)
-            logger.debug(f"ORDER_PLACED event emitted for {order['order_id']}")
+            logger.debug(f"ORDER_PLACED event published for {order['order_id']}")
 
         except Exception as e:
-            logger.error(f"Failed to emit ORDER_PLACED: {e}")
+            logger.error(f"Failed to publish ORDER_PLACED: {e}")
 
     async def _simulate_fill(self, order: Dict[str, Any]) -> None:
         """
@@ -319,7 +319,7 @@ class OrderProcessor(EventProcessor):
             )
 
             # Emit ORDER_FILLED event
-            await self._emit_order_filled(fill_data)
+            await self._publish_order_filled(fill_data)
 
             # Create position
             await self._create_position(order, fill_data)
@@ -327,9 +327,9 @@ class OrderProcessor(EventProcessor):
         except Exception as e:
             logger.error(f"Failed to simulate fill: {e}")
 
-    async def _emit_order_filled(self, fill_data: Dict[str, Any]) -> None:
+    async def _publish_order_filled(self, fill_data: Dict[str, Any]) -> None:
         """
-        Emit ORDER_FILLED event.
+        Publish ORDER_FILLED event to queue.
 
         Args:
             fill_data (Dict): Fill data
@@ -342,10 +342,10 @@ class OrderProcessor(EventProcessor):
             )
 
             await self.event_bus.publish(event)
-            logger.debug(f"ORDER_FILLED event emitted for {fill_data['order_id']}")
+            logger.debug(f"ORDER_FILLED event published for {fill_data['order_id']}")
 
         except Exception as e:
-            logger.error(f"Failed to emit ORDER_FILLED: {e}")
+            logger.error(f"Failed to publish ORDER_FILLED: {e}")
 
     async def _create_position(
         self,
@@ -438,14 +438,14 @@ class OrderProcessor(EventProcessor):
             )
 
             # Emit POSITION_CLOSED event
-            await self._emit_position_closed(close_data)
+            await self._publish_position_closed(close_data)
 
         except Exception as e:
             logger.error(f"Failed to close position: {e}")
 
-    async def _emit_position_closed(self, close_data: Dict[str, Any]) -> None:
+    async def _publish_position_closed(self, close_data: Dict[str, Any]) -> None:
         """
-        Emit POSITION_CLOSED event.
+        Publish POSITION_CLOSED event to queue.
 
         Args:
             close_data (Dict): Position close data
@@ -458,14 +458,14 @@ class OrderProcessor(EventProcessor):
             )
 
             await self.event_bus.publish(event)
-            logger.debug(f"POSITION_CLOSED event emitted for {close_data['order_id']}")
+            logger.debug(f"POSITION_CLOSED event published for {close_data['order_id']}")
 
         except Exception as e:
-            logger.error(f"Failed to emit POSITION_CLOSED: {e}")
+            logger.error(f"Failed to publish POSITION_CLOSED: {e}")
 
-    async def _emit_error(self, error: Exception, context: str) -> None:
+    async def _publish_error(self, error: Exception, context: str) -> None:
         """
-        Emit ERROR event for system errors.
+        Publish ERROR event to queue for system errors.
 
         Args:
             error (Exception): The error that occurred
@@ -485,10 +485,10 @@ class OrderProcessor(EventProcessor):
             )
 
             await self.event_bus.publish(event)
-            logger.debug(f"ERROR event emitted: {context}")
+            logger.debug(f"ERROR event published: {context}")
 
         except Exception as e:
-            logger.error(f"Failed to emit ERROR event: {e}")
+            logger.error(f"Failed to publish ERROR event: {e}")
 
     @property
     def orders_placed_count(self) -> int:

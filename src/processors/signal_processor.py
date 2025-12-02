@@ -210,7 +210,7 @@ class SignalProcessor(EventProcessor):
                 # Generate signal
                 signal = self._generate_signal(ob_data, fvg_data)
                 if signal:
-                    await self._emit_signal(signal)
+                    await self._publish_signal(signal)
                     # Remove used patterns to avoid duplicate signals
                     self._recent_order_blocks.remove(ob_item)
                     self._recent_fvgs.remove(fvg_item)
@@ -390,9 +390,9 @@ class SignalProcessor(EventProcessor):
         # Cap at 100
         return min(100.0, confidence)
 
-    async def _emit_signal(self, signal: Dict[str, Any]) -> None:
+    async def _publish_signal(self, signal: Dict[str, Any]) -> None:
         """
-        Emit ENTRY_SIGNAL event.
+        Publish ENTRY_SIGNAL event to queue.
 
         Args:
             signal (Dict): Signal data
@@ -407,10 +407,10 @@ class SignalProcessor(EventProcessor):
             )
 
             await self.event_bus.publish(event)
-            logger.info(f"ENTRY_SIGNAL #{self._signal_count} emitted")
+            logger.info(f"ENTRY_SIGNAL #{self._signal_count} published")
 
         except Exception as e:
-            logger.error(f"Failed to emit ENTRY_SIGNAL: {e}")
+            logger.error(f"Failed to publish ENTRY_SIGNAL: {e}")
 
     def _cleanup_old_patterns(self) -> None:
         """

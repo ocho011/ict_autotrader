@@ -149,13 +149,13 @@ class PatternProcessor(EventProcessor):
             # Detect Order Block from current candle
             order_block = self._detect_order_block(candle_data)
             if order_block:
-                await self._emit_order_block(order_block)
+                await self._publish_order_block(order_block)
 
             # Detect FVG (requires at least 3 candles)
             if len(self._candle_history) >= 3:
                 fvg = self._detect_fvg()
                 if fvg:
-                    await self._emit_fvg(fvg)
+                    await self._publish_fvg(fvg)
 
             # Cleanup old patterns
             self._cleanup_old_patterns()
@@ -348,9 +348,9 @@ class PatternProcessor(EventProcessor):
             logger.error(f"Failed to create FVG model: {e}")
             return None
 
-    async def _emit_order_block(self, order_block: OrderBlock) -> None:
+    async def _publish_order_block(self, order_block: OrderBlock) -> None:
         """
-        Emit ORDER_BLOCK_DETECTED event.
+        Publish ORDER_BLOCK_DETECTED event to queue.
 
         Args:
             order_block (OrderBlock): Detected order block
@@ -380,11 +380,11 @@ class PatternProcessor(EventProcessor):
             logger.debug("ORDER_BLOCK_DETECTED event published")
 
         except Exception as e:
-            logger.error(f"Failed to emit ORDER_BLOCK_DETECTED event: {e}")
+            logger.error(f"Failed to publish ORDER_BLOCK_DETECTED event: {e}")
 
-    async def _emit_fvg(self, fvg: FVG) -> None:
+    async def _publish_fvg(self, fvg: FVG) -> None:
         """
-        Emit FVG_DETECTED event.
+        Publish FVG_DETECTED event to queue.
 
         Args:
             fvg (FVG): Detected fair value gap
@@ -414,7 +414,7 @@ class PatternProcessor(EventProcessor):
             logger.debug("FVG_DETECTED event published")
 
         except Exception as e:
-            logger.error(f"Failed to emit FVG_DETECTED event: {e}")
+            logger.error(f"Failed to publish FVG_DETECTED event: {e}")
 
     def _cleanup_old_patterns(self) -> None:
         """
