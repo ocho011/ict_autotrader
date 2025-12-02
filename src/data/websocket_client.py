@@ -20,6 +20,7 @@ Architecture:
 import os
 from typing import Optional
 from pathlib import Path
+from datetime import datetime
 import yaml
 from loguru import logger
 from binance import AsyncClient, BinanceSocketManager
