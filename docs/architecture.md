@@ -60,24 +60,29 @@ bus = EventBus()
 # Subscribe to events
 bus.subscribe(EventType.CANDLE_CLOSED, on_candle_closed)
 
+# Event processing lifecycle (must start BEFORE publishing)
+await bus.start()   # Start background event processing loop
+
 # Async queue-based publishing (non-blocking)
 await bus.publish(event)  # Adds to queue without blocking
 
-# Event processing lifecycle
-await bus.start()   # Start background event processing loop
+# Graceful shutdown
 await bus.stop()    # Graceful shutdown with no event loss
 
-# Synchronous emission (direct)
+# Synchronous emission (direct, does not require start())
 bus.emit(event)     # Calls all subscribers immediately
 ```
 
 **Async Queue Architecture:**
 - Non-blocking event publishing via `asyncio.Queue`
+- Lazy queue initialization in `start()` ensures correct event loop binding
 - Background event processing loop using `asyncio.create_task()`
 - Graceful shutdown with 5-second timeout ensures no event loss
 - Robust error handling with try-except-finally pattern for queue task tracking
 - Properties: `is_running` (bool), `queue_size` (int)
 - Comprehensive error logging with Loguru structured context
+
+**Important:** The queue is created lazily when `start()` is called, not during `__init__`. This ensures the queue is bound to the correct event loop, preventing "Future attached to different loop" errors in async testing and multi-loop environments.
 
 **Event Dispatching with Timeout Protection:**
 - Supports both synchronous and asynchronous handlers
@@ -491,9 +496,9 @@ from src.core.event_bus import EventBus
 from src.core.event_processor import EventOrchestrator
 from src.processors import PatternProcessor, SignalProcessor, OrderProcessor
 
-# Create event bus
+# Create event bus and start it FIRST
 bus = EventBus()
-await bus.start()
+await bus.start()  # Must start before any processors publish events
 
 # Create orchestrator
 orchestrator = EventOrchestrator(bus)
