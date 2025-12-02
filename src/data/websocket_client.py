@@ -25,7 +25,7 @@ import yaml
 from loguru import logger
 from binance import AsyncClient, BinanceSocketManager
 
-from src.core.event_bus import EventBus
+from src.core.event_bus import EventBus, Event, EventType
 
 
 class WebSocketCredentialError(Exception):
@@ -464,7 +464,6 @@ class BinanceWebSocket:
                 }
 
                 # Emit CANDLE_CLOSED event to EventBus
-                from src.core.event_bus import Event, EventType
                 event = Event(
                     event_type=EventType.CANDLE_CLOSED,
                     data=event_data,
