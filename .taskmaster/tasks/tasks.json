@@ -318,9 +318,10 @@
               3
             ],
             "details": "Extend _handle_kline() method to: (1) Import Event and EventType from core.event_bus, (2) Create Event object with type=EventType.CANDLE_CLOSED, (3) Set event data dictionary containing: candle (parsed OHLCV dict), symbol (self.symbol), interval (self.interval), (4) Call event_bus.publish(event) after candle parsing, (5) Log event publication at INFO level with candle timestamp and symbol. Ensure event is only published for closed candles.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Integration test with EventBus mock. Verify CANDLE_CLOSED event is published only when candle closes. Validate event data structure contains candle, symbol, interval fields. Confirm candle data matches parsed values. Test event is not published for open candles.",
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2025-12-02T22:14:37.673Z"
           },
           {
             "id": 5,
@@ -367,7 +368,7 @@
         "complexity": 8,
         "recommendedSubtasks": 7,
         "expansionPrompt": "Break down WebSocket client into: (1) Set up AsyncClient and BinanceSocketManager initialization with testnet support, (2) Implement WebSocket connection and kline stream subscription, (3) Create message handling and candle parsing logic, (4) Implement CANDLE_CLOSED event publishing, (5) Add reconnection logic with exponential backoff, (6) Implement graceful shutdown and cleanup, (7) Integration testing with Binance Testnet and event verification",
-        "updatedAt": "2025-12-02T16:20:13.702Z"
+        "updatedAt": "2025-12-02T22:14:37.673Z"
       },
       {
         "id": "5",
@@ -955,7 +956,7 @@
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2025-12-02T16:20:13.702Z",
+      "lastModified": "2025-12-02T22:14:37.673Z",
       "taskCount": 10,
       "completedCount": 3,
       "tags": [

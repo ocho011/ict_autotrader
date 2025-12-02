@@ -18,12 +18,14 @@ Architecture:
 """
 
 import os
+import asyncio
 from typing import Optional
 from pathlib import Path
 from datetime import datetime
 import yaml
 from loguru import logger
 from binance import AsyncClient, BinanceSocketManager
+from binance.exceptions import BinanceAPIException
 
 from src.core.event_bus import EventBus, Event, EventType
 
@@ -334,30 +336,70 @@ class BinanceWebSocket:
         """
         return self._is_testnet
 
-    async def start_kline_stream(self) -> None:
+    def _calculate_backoff(self, attempt: int, initial_delay: float = 1.0,
+                          max_delay: float = 60.0, multiplier: float = 2.0) -> float:
+        """
+        Calculate exponential backoff delay for reconnection attempts.
+
+        Uses exponential backoff strategy with configurable parameters to determine
+        the delay before the next reconnection attempt. The delay increases
+        exponentially with each retry attempt up to a maximum cap.
+
+        Formula: min(initial_delay * (multiplier ^ attempt), max_delay)
+
+        Args:
+            attempt (int): Current retry attempt number (0-indexed)
+            initial_delay (float): Initial delay in seconds. Defaults to 1.0
+            max_delay (float): Maximum delay cap in seconds. Defaults to 60.0
+            multiplier (float): Exponential multiplier. Defaults to 2.0
+
+        Returns:
+            float: Calculated delay in seconds, capped at max_delay
+
+        Examples:
+            >>> ws._calculate_backoff(0)  # Returns 1.0
+            >>> ws._calculate_backoff(1)  # Returns 2.0
+            >>> ws._calculate_backoff(2)  # Returns 4.0
+            >>> ws._calculate_backoff(3)  # Returns 8.0
+            >>> ws._calculate_backoff(10)  # Returns 60.0 (capped)
+        """
+        delay = initial_delay * (multiplier ** attempt)
+        return min(delay, max_delay)
+
+    async def start_kline_stream(self, max_retries: int = 10) -> None:
         """
         Start streaming kline (candlestick) data from Binance WebSocket.
 
         This method establishes a WebSocket connection and continuously receives
-        kline data updates. It runs indefinitely until an error occurs or the
-        connection is closed.
+        kline data updates. It implements automatic reconnection with exponential
+        backoff for network resilience.
 
         The method uses BinanceSocketManager's kline_futures_socket as a context
         manager to ensure proper resource cleanup. Each received kline message
         is processed through _handle_kline().
 
+        Reconnection Strategy:
+            - Exponential backoff: 1s, 2s, 4s, 8s, ..., up to 60s max
+            - Configurable max retry attempts (default: 10)
+            - Automatic reconnection on connection errors
+            - WARNING level logging for reconnection attempts
+
         Prerequisites:
             - Must call connect() before calling this method
             - AsyncClient and BinanceSocketManager must be initialized
 
+        Args:
+            max_retries (int): Maximum reconnection attempts. Defaults to 10.
+
         Raises:
             RuntimeError: If client is not connected
-            Exception: If stream initialization or message processing fails
+            Exception: If max retries exhausted or unrecoverable error occurs
 
         Examples:
             >>> ws = BinanceWebSocket(event_bus, 'BTCUSDT', '15m')
             >>> await ws.connect()
-            >>> await ws.start_kline_stream()  # Runs indefinitely
+            >>> await ws.start_kline_stream()  # Runs indefinitely with auto-reconnect
+            >>> await ws.start_kline_stream(max_retries=5)  # Custom retry limit
         """
         # Validate connection state
         if not self.is_connected:
@@ -369,30 +411,46 @@ class BinanceWebSocket:
             f"Starting kline stream for {self.symbol} ({self.interval})"
         )
 
-        try:
-            # Use BinanceSocketManager's kline futures socket as context manager
-            async with self.bsm.kline_futures_socket(
-                symbol=self.symbol,
-                interval=self.interval
-            ) as stream:
-                logger.info(
-                    f"Successfully connected to kline stream for {self.symbol} ({self.interval})"
+        # Retry loop with exponential backoff
+        for attempt in range(max_retries):
+            try:
+                # Use BinanceSocketManager's kline futures socket as context manager
+                async with self.bsm.kline_futures_socket(
+                    symbol=self.symbol,
+                    interval=self.interval
+                ) as stream:
+                    logger.info(
+                        f"Successfully connected to kline stream for {self.symbol} ({self.interval})"
+                    )
+
+                    # Infinite loop to receive messages
+                    while True:
+                        # Receive message from stream
+                        msg = await stream.recv()
+
+                        # Process the kline message
+                        await self._handle_kline(msg)
+
+            except (BinanceAPIException, asyncio.TimeoutError, Exception) as e:
+                # Check if we've exhausted retries
+                if attempt >= max_retries - 1:
+                    logger.error(
+                        f"Max retries ({max_retries}) exhausted for {self.symbol} ({self.interval}). "
+                        f"Last error: {e}"
+                    )
+                    raise
+
+                # Calculate exponential backoff delay
+                delay = self._calculate_backoff(attempt)
+
+                # Log reconnection attempt at WARNING level
+                logger.warning(
+                    f"Connection error for {self.symbol} ({self.interval}): {e}. "
+                    f"Reconnection attempt {attempt + 1}/{max_retries} after {delay}s delay..."
                 )
 
-                # Infinite loop to receive messages
-                while True:
-                    # Receive message from stream
-                    msg = await stream.recv()
-
-                    # Process the kline message
-                    await self._handle_kline(msg)
-
-        except Exception as e:
-            # Log connection/streaming errors
-            logger.error(
-                f"Error in kline stream for {self.symbol} ({self.interval}): {e}"
-            )
-            raise
+                # Wait before retrying
+                await asyncio.sleep(delay)
 
     async def _handle_kline(self, msg: dict) -> None:
         """

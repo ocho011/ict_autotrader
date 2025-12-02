@@ -378,6 +378,86 @@ class TestWebSocketProperties:
         assert "testnet" in repr_str
 
 
+class TestExponentialBackoff:
+    """Test exponential backoff calculation for reconnection logic."""
+
+    def test_backoff_first_attempt(self):
+        """Test backoff delay for first retry attempt (attempt=0)."""
+        event_bus = EventBus()
+        ws = BinanceWebSocket(event_bus, "BTCUSDT", "15m")
+
+        delay = ws._calculate_backoff(attempt=0)
+        assert delay == 1.0  # initial_delay * (2^0) = 1.0
+
+    def test_backoff_second_attempt(self):
+        """Test backoff delay for second retry attempt (attempt=1)."""
+        event_bus = EventBus()
+        ws = BinanceWebSocket(event_bus, "BTCUSDT", "15m")
+
+        delay = ws._calculate_backoff(attempt=1)
+        assert delay == 2.0  # initial_delay * (2^1) = 2.0
+
+    def test_backoff_third_attempt(self):
+        """Test backoff delay for third retry attempt (attempt=2)."""
+        event_bus = EventBus()
+        ws = BinanceWebSocket(event_bus, "BTCUSDT", "15m")
+
+        delay = ws._calculate_backoff(attempt=2)
+        assert delay == 4.0  # initial_delay * (2^2) = 4.0
+
+    def test_backoff_fourth_attempt(self):
+        """Test backoff delay for fourth retry attempt (attempt=3)."""
+        event_bus = EventBus()
+        ws = BinanceWebSocket(event_bus, "BTCUSDT", "15m")
+
+        delay = ws._calculate_backoff(attempt=3)
+        assert delay == 8.0  # initial_delay * (2^3) = 8.0
+
+    def test_backoff_max_delay_cap(self):
+        """Test that backoff delay is capped at max_delay."""
+        event_bus = EventBus()
+        ws = BinanceWebSocket(event_bus, "BTCUSDT", "15m")
+
+        # Attempt 10: 1 * (2^10) = 1024, but should be capped at 60
+        delay = ws._calculate_backoff(attempt=10)
+        assert delay == 60.0
+
+    def test_backoff_with_custom_initial_delay(self):
+        """Test backoff with custom initial delay."""
+        event_bus = EventBus()
+        ws = BinanceWebSocket(event_bus, "BTCUSDT", "15m")
+
+        delay = ws._calculate_backoff(attempt=2, initial_delay=0.5)
+        assert delay == 2.0  # 0.5 * (2^2) = 2.0
+
+    def test_backoff_with_custom_max_delay(self):
+        """Test backoff with custom max delay."""
+        event_bus = EventBus()
+        ws = BinanceWebSocket(event_bus, "BTCUSDT", "15m")
+
+        delay = ws._calculate_backoff(attempt=10, max_delay=30.0)
+        assert delay == 30.0  # Capped at custom max
+
+    def test_backoff_with_custom_multiplier(self):
+        """Test backoff with custom multiplier."""
+        event_bus = EventBus()
+        ws = BinanceWebSocket(event_bus, "BTCUSDT", "15m")
+
+        delay = ws._calculate_backoff(attempt=2, multiplier=3.0)
+        assert delay == 9.0  # 1.0 * (3^2) = 9.0
+
+    def test_backoff_exponential_progression(self):
+        """Test that backoff follows exponential progression up to cap."""
+        event_bus = EventBus()
+        ws = BinanceWebSocket(event_bus, "BTCUSDT", "15m")
+
+        expected_delays = [1.0, 2.0, 4.0, 8.0, 16.0, 32.0, 60.0, 60.0, 60.0, 60.0]
+
+        for attempt, expected in enumerate(expected_delays):
+            delay = ws._calculate_backoff(attempt)
+            assert delay == expected, f"Attempt {attempt}: expected {expected}, got {delay}"
+
+
 class TestKlineStreaming:
     """Test kline data streaming functionality."""
 
@@ -553,3 +633,237 @@ class TestKlineStreaming:
 
         # Event should not be emitted due to error
         assert len(emitted_events) == 0
+
+    @pytest.mark.asyncio
+    async def test_start_kline_stream_with_reconnection_on_binance_api_exception(self, ws):
+        """Test reconnection on BinanceAPIException with exponential backoff."""
+        from binance.exceptions import BinanceAPIException
+        import asyncio
+
+        # Create mock response for BinanceAPIException
+        mock_response = Mock()
+        mock_response.text = "Connection lost"
+
+        # Track which attempt we're on
+        attempt_count = [0]
+
+        # Track actual sleep delays from the retry loop (not our test delays)
+        actual_delays = []
+        original_sleep = asyncio.sleep
+
+        async def mock_sleep(delay):
+            actual_delays.append(delay)
+            # Don't actually sleep in test
+
+        # Create a factory that returns a new stream for each attempt
+        def create_mock_stream():
+            mock_stream = AsyncMock()
+            current_attempt = attempt_count[0]
+            attempt_count[0] += 1
+
+            # First attempt fails, second succeeds
+            if current_attempt == 0:
+                mock_stream.recv = AsyncMock(side_effect=BinanceAPIException(response=mock_response, status_code=500, text="Connection lost"))
+            else:
+                # After first failure, stream works normally
+                mock_stream.recv = AsyncMock(return_value={'k': {'x': False}})
+
+            return mock_stream
+
+        # Create mock context manager that returns a new stream each time
+        def mock_socket(*args, **kwargs):
+            mock_cm = AsyncMock()
+            mock_cm.__aenter__ = AsyncMock(return_value=create_mock_stream())
+            mock_cm.__aexit__ = AsyncMock(return_value=None)
+            return mock_cm
+
+        # Mock kline_futures_socket to return the context manager
+        ws.bsm.kline_futures_socket = mock_socket
+
+        with patch('asyncio.sleep', mock_sleep):
+            # Start stream with limited retries for testing
+            task = asyncio.create_task(ws.start_kline_stream(max_retries=3))
+
+            # Let it run briefly (use original sleep)
+            await original_sleep(0.1)
+            task.cancel()
+            try:
+                await task
+            except asyncio.CancelledError:
+                pass
+
+        # Verify exponential backoff was used (first retry delay should be 1.0s)
+        assert len(actual_delays) >= 1
+        assert actual_delays[0] == 1.0  # First retry: 1 * (2^0) = 1.0
+
+    @pytest.mark.asyncio
+    async def test_start_kline_stream_with_max_retries_exhausted(self, ws):
+        """Test that max retries are enforced and exception is raised."""
+        from binance.exceptions import BinanceAPIException
+
+        # Create mock response for BinanceAPIException
+        mock_response = Mock()
+        mock_response.text = "Persistent failure"
+
+        # Mock stream that always fails
+        mock_stream = AsyncMock()
+        mock_stream.recv = AsyncMock(side_effect=BinanceAPIException(response=mock_response, status_code=500, text="Persistent failure"))
+
+        # Create mock context manager
+        mock_cm = AsyncMock()
+        mock_cm.__aenter__ = AsyncMock(return_value=mock_stream)
+        mock_cm.__aexit__ = AsyncMock(return_value=None)
+
+        # Mock kline_futures_socket to return the context manager
+        ws.bsm.kline_futures_socket = Mock(return_value=mock_cm)
+
+        # Mock sleep to speed up test
+        with patch('asyncio.sleep', AsyncMock()):
+            # Should raise exception after exhausting retries
+            with pytest.raises(BinanceAPIException, match="Persistent failure"):
+                await ws.start_kline_stream(max_retries=2)
+
+    @pytest.mark.asyncio
+    async def test_start_kline_stream_reconnection_on_timeout(self, ws):
+        """Test reconnection on asyncio.TimeoutError."""
+        import asyncio
+
+        # Track which attempt we're on
+        attempt_count = [0]
+
+        # Track delays from retry loop
+        actual_delays = []
+        original_sleep = asyncio.sleep
+
+        async def mock_sleep(delay):
+            actual_delays.append(delay)
+
+        # Create a factory that returns a new stream for each attempt
+        def create_mock_stream():
+            mock_stream = AsyncMock()
+            current_attempt = attempt_count[0]
+            attempt_count[0] += 1
+
+            # First attempt times out, second succeeds
+            if current_attempt == 0:
+                mock_stream.recv = AsyncMock(side_effect=asyncio.TimeoutError("Connection timeout"))
+            else:
+                # After first failure, stream works normally
+                mock_stream.recv = AsyncMock(return_value={'k': {'x': False}})
+
+            return mock_stream
+
+        # Create mock context manager that returns a new stream each time
+        def mock_socket(*args, **kwargs):
+            mock_cm = AsyncMock()
+            mock_cm.__aenter__ = AsyncMock(return_value=create_mock_stream())
+            mock_cm.__aexit__ = AsyncMock(return_value=None)
+            return mock_cm
+
+        # Mock kline_futures_socket to return the context manager
+        ws.bsm.kline_futures_socket = mock_socket
+
+        with patch('asyncio.sleep', mock_sleep):
+            task = asyncio.create_task(ws.start_kline_stream(max_retries=3))
+            await original_sleep(0.1)
+            task.cancel()
+            try:
+                await task
+            except asyncio.CancelledError:
+                pass
+
+        # Verify reconnection attempt was made
+        assert len(actual_delays) >= 1
+        assert actual_delays[0] == 1.0
+
+    @pytest.mark.asyncio
+    async def test_start_kline_stream_reconnection_logging(self, ws, caplog):
+        """Test that reconnection attempts are logged at WARNING level."""
+        from binance.exceptions import BinanceAPIException
+        import logging
+        import asyncio
+
+        # Configure caplog to capture WARNING level
+        caplog.set_level(logging.WARNING)
+
+        # Create mock response for BinanceAPIException
+        mock_response = Mock()
+        mock_response.text = "Connection error"
+
+        # Track which attempt we're on
+        attempt_count = [0]
+
+        # Create a factory that returns a new stream for each attempt
+        def create_mock_stream():
+            mock_stream = AsyncMock()
+            current_attempt = attempt_count[0]
+            attempt_count[0] += 1
+
+            # First attempt fails, second succeeds
+            if current_attempt == 0:
+                mock_stream.recv = AsyncMock(side_effect=BinanceAPIException(response=mock_response, status_code=500, text="Connection error"))
+            else:
+                # After first failure, stream works normally
+                mock_stream.recv = AsyncMock(return_value={'k': {'x': False}})
+
+            return mock_stream
+
+        # Create mock context manager that returns a new stream each time
+        def mock_socket(*args, **kwargs):
+            mock_cm = AsyncMock()
+            mock_cm.__aenter__ = AsyncMock(return_value=create_mock_stream())
+            mock_cm.__aexit__ = AsyncMock(return_value=None)
+            return mock_cm
+
+        # Mock kline_futures_socket to return the context manager
+        ws.bsm.kline_futures_socket = mock_socket
+
+        original_sleep = asyncio.sleep
+        with patch('asyncio.sleep', AsyncMock()):
+            task = asyncio.create_task(ws.start_kline_stream(max_retries=3))
+            await original_sleep(0.1)
+            task.cancel()
+            try:
+                await task
+            except asyncio.CancelledError:
+                pass
+
+        # Verify WARNING log for reconnection
+        warning_logs = [rec for rec in caplog.records if rec.levelname == 'WARNING']
+        assert len(warning_logs) >= 1
+        assert "Reconnection attempt" in warning_logs[0].message
+        assert "1/3" in warning_logs[0].message  # Should show attempt 1/3
+
+    @pytest.mark.asyncio
+    async def test_start_kline_stream_custom_max_retries(self, ws):
+        """Test custom max_retries parameter."""
+        from binance.exceptions import BinanceAPIException
+
+        # Create mock response for BinanceAPIException
+        mock_response = Mock()
+        mock_response.text = "Failure"
+
+        # Mock stream that always fails
+        mock_stream = AsyncMock()
+        mock_stream.recv = AsyncMock(side_effect=BinanceAPIException(response=mock_response, status_code=500, text="Failure"))
+
+        # Create mock context manager
+        mock_cm = AsyncMock()
+        mock_cm.__aenter__ = AsyncMock(return_value=mock_stream)
+        mock_cm.__aexit__ = AsyncMock(return_value=None)
+
+        # Mock kline_futures_socket to return the context manager
+        ws.bsm.kline_futures_socket = Mock(return_value=mock_cm)
+
+        # Track attempts
+        attempts = []
+        async def mock_sleep(delay):
+            attempts.append(delay)
+
+        with patch('asyncio.sleep', mock_sleep):
+            with pytest.raises(BinanceAPIException):
+                await ws.start_kline_stream(max_retries=5)
+
+        # Should have made 5 attempts total (0-indexed: 0, 1, 2, 3, 4)
+        # Delays occur after failed attempts, so 4 delays for 5 attempts
+        assert len(attempts) == 4
