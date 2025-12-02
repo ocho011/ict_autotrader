@@ -517,9 +517,62 @@ bearish_fvgs = store.get_valid_fvgs(fvg_type="bearish")  # Bearish FVGs only
   - Validity filtering (6 tests)
   - Type filtering (6 tests)
 
+#### Pattern Cleanup Logic
+
+**Status:** ✅ Implemented (Task 3.4 - 2025-12-02)
+
+The StateStore includes automatic cleanup of old patterns to prevent unbounded memory growth:
+
+```python
+def _cleanup_old_patterns(self, max_age_candles: int = 500) -> None:
+    """
+    Remove patterns older than max_age_candles threshold.
+
+    Age is measured by candle count (index-based), not time duration.
+    Patterns are kept if their timestamp corresponds to a candle within
+    the last max_age_candles candles.
+
+    Args:
+        max_age_candles: Maximum candle age to retain patterns for.
+            Default 500 aligns with candle deque maxlen.
+    """
+```
+
+**Cleanup Features:**
+- **Automatic Invocation:** Called at the end of every `add_candle()` operation
+- **Index-Based Age:** Measures age by candle count, not time duration
+- **Timestamp Filtering:** Patterns filtered by comparing timestamps against cutoff candle
+- **Default Threshold:** 500 candles (aligns with candle deque size)
+- **Minimal Logging:** DEBUG-level logging only when patterns actually removed
+- **Edge Case Handling:** Gracefully handles empty candles, invalid thresholds, missing timestamps
+
+**Implementation Details:**
+1. Calculate cutoff index: `len(candles) - max_age_candles`
+2. Early return if insufficient candles or invalid parameters
+3. Get cutoff timestamp from candle at cutoff index
+4. Filter both OrderBlocks and FVGs: keep only patterns with `timestamp >= cutoff_timestamp`
+5. Log removed count at DEBUG level if any patterns removed
+
+**Memory Management:**
+- **Candles:** Automatic FIFO cleanup via deque maxlen (500)
+- **Patterns:** Manual cleanup via `_cleanup_old_patterns()` called on each candle addition
+- **Prevents:** Unbounded memory growth while retaining relevant patterns
+
+**Testing:**
+- **Test Suite:** `tests/unit/core/test_state_store.py` - TestPatternCleanup class
+- **Test Coverage:** 33/33 tests passed (100%)
+- **New Tests:** 10 comprehensive test cases for cleanup logic
+  - Old pattern removal (OrderBlocks and FVGs)
+  - Recent pattern preservation
+  - Empty candles edge case
+  - Insufficient candles handling
+  - Invalid threshold handling
+  - Auto-cleanup verification
+  - Mixed age patterns
+  - Validity flag preservation
+
 **Integration Points:**
-- **Task 3.4:** Cleanup methods will invalidate old/filled patterns
-- **Task 4 (WebSocket):** Calls `add_candle()` on CANDLE_CLOSED events
+- **Task 4 (WebSocket):** Calls `add_candle()` on CANDLE_CLOSED events (triggers auto-cleanup)
 - **Task 6 (SignalEngine):** Uses `get_valid_order_blocks()` and `get_valid_fvgs()` for pattern analysis
 - **Task 8 (OrderManager):** Queries `candles` deque for recent price action
 
