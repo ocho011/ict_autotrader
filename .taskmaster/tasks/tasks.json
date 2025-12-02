@@ -331,9 +331,10 @@
               2
             ],
             "details": "Add reconnection logic: (1) Wrap start_kline_stream() in retry loop with max_retries (default 10), (2) Implement exponential backoff: initial_delay=1s, max_delay=60s, multiplier=2, (3) Catch connection exceptions (ClientError, BinanceAPIException, asyncio.TimeoutError), (4) Log reconnection attempts at WARNING level with retry count and delay, (5) Reset backoff delay on successful connection, (6) Raise exception after max_retries exhausted. Add _calculate_backoff(attempt: int) helper method.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Unit test backoff calculation for various attempt counts. Integration test reconnection by simulating network failures. Verify exponential backoff delays (1s, 2s, 4s, 8s...). Test max_delay cap at 60s. Confirm connection succeeds after transient failures. Verify exception raised after max_retries.",
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2025-12-02T22:50:03.229Z"
           },
           {
             "id": 6,
@@ -368,7 +369,7 @@
         "complexity": 8,
         "recommendedSubtasks": 7,
         "expansionPrompt": "Break down WebSocket client into: (1) Set up AsyncClient and BinanceSocketManager initialization with testnet support, (2) Implement WebSocket connection and kline stream subscription, (3) Create message handling and candle parsing logic, (4) Implement CANDLE_CLOSED event publishing, (5) Add reconnection logic with exponential backoff, (6) Implement graceful shutdown and cleanup, (7) Integration testing with Binance Testnet and event verification",
-        "updatedAt": "2025-12-02T22:14:37.673Z"
+        "updatedAt": "2025-12-02T22:50:03.229Z"
       },
       {
         "id": "5",
@@ -956,7 +957,7 @@
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2025-12-02T22:14:37.673Z",
+      "lastModified": "2025-12-02T22:50:03.231Z",
       "taskCount": 10,
       "completedCount": 3,
       "tags": [
