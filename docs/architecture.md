@@ -101,7 +101,127 @@ Order Manager → ORDER_PLACED / ORDER_FILLED
 Discord → Notification
 ```
 
-### 2. Trading Models (`src/core/models.py`)
+### 2. WebSocket Client (`src/data/websocket_client.py`)
+
+**Purpose:** Real-time market data streaming from Binance with secure credential management
+
+**Key Features:**
+- Separate testnet/mainnet credential handling
+- Configuration-driven environment selection
+- AsyncClient lifecycle management
+- Comprehensive error handling and validation
+- Event-driven architecture integration
+
+**Core Components:**
+
+#### BinanceWebSocket Class
+Manages WebSocket connection lifecycle for Binance market data streaming:
+
+```python
+from src.core.event_bus import EventBus
+from src.data.websocket_client import BinanceWebSocket
+
+# Initialize WebSocket client
+event_bus = EventBus()
+ws = BinanceWebSocket(
+    event_bus=event_bus,
+    symbol='BTCUSDT',
+    interval='15m',
+    config_path='config.yaml'  # Optional
+)
+
+# Connect to Binance (reads credentials and config)
+await ws.connect()
+
+# Check connection status
+if ws.is_connected:
+    print(f"Connected to {'testnet' if ws.is_testnet else 'mainnet'}")
+
+# Disconnect and cleanup
+await ws.disconnect()
+```
+
+**Security Architecture:**
+
+1. **Credential Segregation:**
+   - Testnet: `BINANCE_TESTNET_API_KEY`, `BINANCE_TESTNET_API_SECRET`
+   - Mainnet: `BINANCE_MAINNET_API_KEY`, `BINANCE_MAINNET_API_SECRET`
+   - Automatic selection based on `config.yaml` `use_testnet` flag
+
+2. **Validation Layers:**
+   - Environment variable existence check
+   - Placeholder value detection (`your_*_here`, `placeholder`)
+   - Configuration file validation (YAML syntax, required fields)
+   - Type checking for testnet boolean flag
+
+3. **Error Handling:**
+   - `WebSocketCredentialError`: Missing/invalid credentials
+   - `WebSocketConfigError`: Configuration file issues
+   - Clear error messages guide proper configuration
+
+**Configuration (config.yaml):**
+```yaml
+use_testnet: true  # true for testnet, false for mainnet
+symbol: BTCUSDT
+interval: 15m
+```
+
+**Environment Variables (.env):**
+```bash
+# Testnet credentials (safe for testing)
+BINANCE_TESTNET_API_KEY=your_testnet_key
+BINANCE_TESTNET_API_SECRET=your_testnet_secret
+
+# Mainnet credentials (REAL trading)
+BINANCE_MAINNET_API_KEY=your_mainnet_key
+BINANCE_MAINNET_API_SECRET=your_mainnet_secret
+```
+
+**Connection Lifecycle:**
+```
+Initialize → Load Config → Load Credentials → Create AsyncClient → Initialize BinanceSocketManager
+                ↓                ↓                    ↓                      ↓
+           config.yaml    Environment Vars    testnet parameter    BinanceSocketManager(client)
+```
+
+**Instance Variables:**
+- `event_bus`: EventBus instance for event publishing
+- `symbol`: Trading pair (normalized uppercase)
+- `interval`: Candlestick interval (normalized lowercase)
+- `client`: AsyncClient instance (None when disconnected)
+- `bsm`: BinanceSocketManager instance (None when disconnected)
+- `config_path`: Path to config.yaml
+
+**Properties:**
+- `is_connected`: Boolean indicating connection status
+- `is_testnet`: Boolean indicating environment (None if not connected)
+
+**Error Scenarios:**
+
+1. **Missing Credentials:**
+   ```python
+   # WebSocketCredentialError: Missing required testnet credentials: BINANCE_TESTNET_API_KEY
+   ```
+
+2. **Placeholder Credentials:**
+   ```python
+   # WebSocketCredentialError: BINANCE_TESTNET_API_KEY appears to be a placeholder value
+   ```
+
+3. **Invalid Config:**
+   ```python
+   # WebSocketConfigError: Missing 'use_testnet' flag in configuration file
+   # WebSocketConfigError: 'use_testnet' must be boolean (true/false)
+   ```
+
+**Test Coverage:** 30 unit tests covering all functionality
+- Initialization validation
+- Configuration loading (testnet/mainnet)
+- Credential loading and validation
+- Connection lifecycle
+- Error handling
+
+### 3. Trading Models (`src/core/models.py`)
 
 **Purpose:** Type-safe trading dataclasses with comprehensive validation
 
