@@ -266,12 +266,65 @@ await event_bus.publish(Event(
 ))
 ```
 
-**Logging:**
-- INFO level: Stream connection status
-- DEBUG level: Individual candle close events with OHLCV data
-- ERROR level: Stream errors and message processing failures
+**Reconnection Logic with Exponential Backoff:**
 
-**Test Coverage:** 35 unit tests covering all functionality
+The WebSocket client includes automatic reconnection logic for network resilience:
+
+```python
+# Start streaming with automatic reconnection
+await ws.start_kline_stream(max_retries=10)  # Default: 10 retries
+
+# Exponential backoff configuration
+# - Initial delay: 1.0s
+# - Max delay: 60.0s
+# - Multiplier: 2.0
+# - Formula: min(initial_delay * (multiplier ^ attempt), max_delay)
+```
+
+**Reconnection Features:**
+- **Exponential Backoff:** Delays increase exponentially (1s → 2s → 4s → 8s → ... → 60s max)
+- **Configurable Retries:** Customize max_retries parameter (default: 10 attempts)
+- **Exception Handling:** Catches BinanceAPIException, TimeoutError, and generic exceptions
+- **Automatic Retry:** Transparent reconnection without manual intervention
+- **Logging:** WARNING level logs for each reconnection attempt with delay information
+- **Max Retries Enforcement:** Raises BinanceAPIException when retries exhausted
+
+**Backoff Calculation:**
+```python
+# Internal helper method
+def _calculate_backoff(attempt: int) -> float:
+    """
+    Calculate exponential backoff delay.
+
+    Example delays:
+    - attempt 0: 1.0s
+    - attempt 1: 2.0s
+    - attempt 2: 4.0s
+    - attempt 3: 8.0s
+    - attempt 4: 16.0s
+    - attempt 5: 32.0s
+    - attempt 6+: 60.0s (capped at max_delay)
+    """
+```
+
+**Reconnection Flow:**
+```
+Connection Error → Calculate Backoff Delay → Log Warning → Sleep → Retry
+                                                ↓
+                                        Attempt Count Check
+                                                ↓
+                                Max Retries Exhausted? → Raise Exception
+                                        No ↓
+                                    Retry Connection
+```
+
+**Logging:**
+- INFO level: Stream connection status, successful reconnections
+- WARNING level: Connection errors with retry attempt information
+- DEBUG level: Individual candle close events with OHLCV data
+- ERROR level: Max retries exhausted, critical stream errors
+
+**Test Coverage:** 49 unit tests covering all functionality
 - Initialization validation
 - Configuration loading (testnet/mainnet)
 - Credential loading and validation
@@ -283,6 +336,22 @@ await event_bus.publish(Event(
   - Open candle filtering (ignored)
   - Malformed message handling
   - Invalid price data error handling
+- Exponential backoff calculation (9 tests)
+  - First attempt (1.0s)
+  - Second attempt (2.0s)
+  - Third attempt (4.0s)
+  - Max delay cap (60.0s)
+  - Custom parameters
+  - Zero attempt edge case
+  - Large attempt capping
+  - Negative attempt handling
+  - Parameter validation
+- Reconnection logic (5 tests)
+  - BinanceAPIException reconnection
+  - TimeoutError reconnection
+  - Custom max_retries parameter
+  - Max retries exhaustion
+  - Reconnection logging verification
 
 ### 3. Trading Models (`src/core/models.py`)
 
