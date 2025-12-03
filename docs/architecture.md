@@ -318,40 +318,112 @@ Connection Error → Calculate Backoff Delay → Log Warning → Sleep → Retry
                                     Retry Connection
 ```
 
-**Logging:**
-- INFO level: Stream connection status, successful reconnections
-- WARNING level: Connection errors with retry attempt information
-- DEBUG level: Individual candle close events with OHLCV data
-- ERROR level: Max retries exhausted, critical stream errors
+**Graceful Shutdown and Resource Cleanup:**
 
-**Test Coverage:** 49 unit tests covering all functionality
-- Initialization validation
-- Configuration loading (testnet/mainnet)
-- Credential loading and validation
-- Connection lifecycle
-- Error handling
-- Kline streaming and message processing (5 tests)
-  - Connection state validation
-  - Closed candle event emission
-  - Open candle filtering (ignored)
-  - Malformed message handling
-  - Invalid price data error handling
-- Exponential backoff calculation (9 tests)
-  - First attempt (1.0s)
-  - Second attempt (2.0s)
-  - Third attempt (4.0s)
-  - Max delay cap (60.0s)
-  - Custom parameters
-  - Zero attempt edge case
-  - Large attempt capping
-  - Negative attempt handling
-  - Parameter validation
-- Reconnection logic (5 tests)
-  - BinanceAPIException reconnection
-  - TimeoutError reconnection
-  - Custom max_retries parameter
-  - Max retries exhaustion
-  - Reconnection logging verification
+The WebSocket client includes comprehensive graceful shutdown mechanisms for proper resource management:
+
+```python
+# Method 1: Using async context manager (recommended)
+async with BinanceWebSocket(event_bus, 'BTCUSDT', '15m') as ws:
+    await ws.start_kline_stream()
+# Automatic cleanup when exiting context
+
+# Method 2: Manual control
+ws = BinanceWebSocket(event_bus, 'BTCUSDT', '15m')
+await ws.connect()
+task = asyncio.create_task(ws.start_kline_stream())
+
+# ... do other work ...
+
+await ws.stop()  # Graceful shutdown
+await ws.disconnect()  # Clean up connection
+```
+
+**Shutdown Features:**
+- **_running Flag:** Controls stream loop lifecycle for graceful termination
+- **stop() Method:** Async method for controlled shutdown with timeout handling
+  - Sets `_running = False` to signal stream loop exit
+  - Waits up to 5 seconds for stream task completion
+  - Falls back to task cancellation if timeout exceeded
+  - Safe to call multiple times (idempotent)
+- **Async Context Manager:** `__aenter__`/`__aexit__` for automatic resource cleanup
+  - `__aenter__`: Establishes connection automatically
+  - `__aexit__`: Comprehensive cleanup sequence:
+    1. Stops stream gracefully if running
+    2. Cancels any pending tasks with proper exception handling
+    3. Closes BinanceSocketManager
+    4. Disconnects AsyncClient
+    5. Logs all shutdown events at INFO level
+- **Stream Loop Integration:** Modified `start_kline_stream()` checks `_running` flag on each iteration
+- **Error Handling:** Enhanced exception handling resets `_running` flag on max retries
+
+**Shutdown Flow:**
+```
+stop() called → _running = False → Stream loop checks flag → Graceful exit
+                     ↓
+            Wait for task completion (5s timeout)
+                     ↓
+          Timeout? → Cancel task → Await cancellation
+                     ↓
+            Clean up stream_task reference
+```
+
+**Context Manager Flow:**
+```
+async with BinanceWebSocket(...) as ws:
+    ↓ __aenter__
+    connect() → Ready to use
+    ↓ User code executes
+    await start_kline_stream()
+    ↓ __aexit__ (automatic)
+    stop() → Cancel tasks → Close BSM → disconnect()
+    ↓
+Guaranteed cleanup complete
+```
+
+**Logging:**
+- INFO level: Stream start/stop, shutdown complete, successful reconnections
+- WARNING level: Connection errors with retry info, timeout during stop (with cancellation fallback)
+- DEBUG level: Individual candle close events with OHLCV data, task cancellation details
+- ERROR level: Max retries exhausted, critical stream errors, shutdown exceptions
+
+**Test Coverage:** 56 tests total covering all functionality
+- Unit tests: 49 tests (tests/unit/test_websocket_client.py)
+  - Initialization validation
+  - Configuration loading (testnet/mainnet)
+  - Credential loading and validation
+  - Connection lifecycle
+  - Error handling
+  - Kline streaming and message processing (5 tests)
+    - Connection state validation
+    - Closed candle event emission
+    - Open candle filtering (ignored)
+    - Malformed message handling
+    - Invalid price data error handling
+  - Exponential backoff calculation (9 tests)
+    - First attempt (1.0s)
+    - Second attempt (2.0s)
+    - Third attempt (4.0s)
+    - Max delay cap (60.0s)
+    - Custom parameters
+    - Zero attempt edge case
+    - Large attempt capping
+    - Negative attempt handling
+    - Parameter validation
+  - Reconnection logic (5 tests)
+    - BinanceAPIException reconnection
+    - TimeoutError reconnection
+    - Custom max_retries parameter
+    - Max retries exhaustion
+    - Reconnection logging verification
+- Integration tests: 7 tests (tests/integration/test_websocket_shutdown.py)
+  - stop() method sets _running flag to False
+  - stop() can be called multiple times safely (idempotent)
+  - Async context manager entry establishes connection
+  - Async context manager exit closes connection properly
+  - Stream loop exits gracefully when _running becomes False
+  - No resource leaks after disconnect (client, bsm, _running cleanup)
+  - Exception propagation through context manager (cleanup still happens)
 
 ### 3. Trading Models (`src/core/models.py`)
 

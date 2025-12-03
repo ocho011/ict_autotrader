@@ -2,8 +2,8 @@
 Binance WebSocket Client for Real-Time Market Data
 
 This module provides WebSocket connectivity to Binance for streaming real-time
-market data. It handles connection lifecycle, credential management, and event
-emission for market data updates.
+market data. It handles connection lifecycle, credential management, event
+emission, and graceful shutdown.
 
 Security Features:
     - Separate testnet/mainnet credential handling
@@ -14,7 +14,14 @@ Security Features:
 Architecture:
     - Event-driven design using EventBus for loose coupling
     - Async/await patterns for non-blocking I/O
-    - Proper resource cleanup with context manager support
+    - Async context manager for automatic resource cleanup
+    - Graceful shutdown with proper task cancellation
+
+Graceful Shutdown:
+    - _running flag controls stream loop lifecycle
+    - stop() method for controlled shutdown
+    - Async context manager (__aenter__/__aexit__) for automatic cleanup
+    - Proper handling of pending tasks and connections
 """
 
 import os
@@ -130,6 +137,10 @@ class BinanceWebSocket:
         self.client: Optional[AsyncClient] = None
         self.bsm: Optional[BinanceSocketManager] = None
         self._is_testnet: Optional[bool] = None
+
+        # Stream control flag for graceful shutdown
+        self._running: bool = False
+        self._stream_task: Optional[asyncio.Task] = None
 
         logger.info(
             f"BinanceWebSocket initialized for {self.symbol} ({self.interval})"
@@ -316,6 +327,54 @@ class BinanceWebSocket:
             self.client = None
             self.bsm = None
 
+    async def stop(self) -> None:
+        """
+        Gracefully stop the WebSocket stream.
+
+        This method signals the stream loop to stop by setting the _running flag
+        to False. The stream will complete its current iteration and then exit
+        gracefully, allowing for proper cleanup.
+
+        This method is safe to call multiple times and can be called even if
+        the stream is not currently running.
+
+        The method will wait for the stream task to complete if it's running,
+        ensuring clean shutdown without leaving orphaned tasks.
+
+        Examples:
+            >>> ws = BinanceWebSocket(event_bus, 'BTCUSDT', '15m')
+            >>> await ws.connect()
+            >>> task = asyncio.create_task(ws.start_kline_stream())
+            >>> # ... let it run for a while ...
+            >>> await ws.stop()  # Gracefully stops the stream
+            >>> await ws.disconnect()  # Clean up connection
+        """
+        if not self._running:
+            logger.debug(f"WebSocket stream for {self.symbol} is not running")
+            return
+
+        logger.info(f"Stopping WebSocket stream for {self.symbol}...")
+        self._running = False
+
+        # Wait for stream task to complete if it exists
+        if self._stream_task and not self._stream_task.done():
+            try:
+                await asyncio.wait_for(self._stream_task, timeout=5.0)
+                logger.info(f"WebSocket stream for {self.symbol} stopped gracefully")
+            except asyncio.TimeoutError:
+                logger.warning(
+                    f"Stream task for {self.symbol} did not complete within timeout, cancelling..."
+                )
+                self._stream_task.cancel()
+                try:
+                    await self._stream_task
+                except asyncio.CancelledError:
+                    logger.info(f"Stream task for {self.symbol} cancelled successfully")
+            except Exception as e:
+                logger.error(f"Error while stopping stream for {self.symbol}: {e}")
+
+        self._stream_task = None
+
     @property
     def is_connected(self) -> bool:
         """
@@ -378,6 +437,9 @@ class BinanceWebSocket:
         manager to ensure proper resource cleanup. Each received kline message
         is processed through _handle_kline().
 
+        The stream runs until stop() is called, which sets the _running flag to False.
+        This allows for graceful shutdown of the stream loop.
+
         Reconnection Strategy:
             - Exponential backoff: 1s, 2s, 4s, 8s, ..., up to 60s max
             - Configurable max retry attempts (default: 10)
@@ -398,7 +460,7 @@ class BinanceWebSocket:
         Examples:
             >>> ws = BinanceWebSocket(event_bus, 'BTCUSDT', '15m')
             >>> await ws.connect()
-            >>> await ws.start_kline_stream()  # Runs indefinitely with auto-reconnect
+            >>> await ws.start_kline_stream()  # Runs until stop() is called
             >>> await ws.start_kline_stream(max_retries=5)  # Custom retry limit
         """
         # Validate connection state
@@ -407,12 +469,22 @@ class BinanceWebSocket:
                 "WebSocket is not connected. Call connect() before start_kline_stream()"
             )
 
+        # Set running flag
+        self._running = True
+
         logger.info(
             f"Starting kline stream for {self.symbol} ({self.interval})"
         )
 
         # Retry loop with exponential backoff
         for attempt in range(max_retries):
+            # Check if stop() was called
+            if not self._running:
+                logger.info(
+                    f"Stream stopped before connection attempt for {self.symbol}"
+                )
+                return
+
             try:
                 # Use BinanceSocketManager's kline futures socket as context manager
                 async with self.bsm.kline_futures_socket(
@@ -423,21 +495,35 @@ class BinanceWebSocket:
                         f"Successfully connected to kline stream for {self.symbol} ({self.interval})"
                     )
 
-                    # Infinite loop to receive messages
-                    while True:
+                    # Loop to receive messages - continues while _running is True
+                    while self._running:
                         # Receive message from stream
                         msg = await stream.recv()
 
                         # Process the kline message
                         await self._handle_kline(msg)
 
+                    # Graceful exit - _running was set to False
+                    logger.info(
+                        f"Stream loop exited gracefully for {self.symbol}"
+                    )
+                    return
+
             except (BinanceAPIException, asyncio.TimeoutError, Exception) as e:
+                # Check if stream was stopped (not an error condition)
+                if not self._running:
+                    logger.info(
+                        f"Stream stopped during error handling for {self.symbol}"
+                    )
+                    return
+
                 # Check if we've exhausted retries
                 if attempt >= max_retries - 1:
                     logger.error(
                         f"Max retries ({max_retries}) exhausted for {self.symbol} ({self.interval}). "
                         f"Last error: {e}"
                     )
+                    self._running = False
                     raise
 
                 # Calculate exponential backoff delay
@@ -540,6 +626,82 @@ class BinanceWebSocket:
                 f"Error handling kline message for {self.symbol}: {e}"
             )
             # Don't re-raise - continue processing other messages
+
+    async def __aenter__(self):
+        """
+        Async context manager entry.
+
+        Automatically establishes connection when entering context.
+        Enables usage pattern:
+            async with BinanceWebSocket(event_bus, 'BTCUSDT', '15m') as ws:
+                await ws.start_kline_stream()
+
+        Returns:
+            BinanceWebSocket: The connected WebSocket instance
+
+        Examples:
+            >>> async with BinanceWebSocket(event_bus, 'BTCUSDT', '15m') as ws:
+            ...     await ws.start_kline_stream()
+            >>> # Connection automatically closed when exiting context
+        """
+        await self.connect()
+        return self
+
+    async def __aexit__(self, _exc_type, _exc_val, _exc_tb):
+        """
+        Async context manager exit.
+
+        Performs cleanup when exiting context:
+        1. Stops the stream gracefully if running
+        2. Closes the WebSocket connection
+        3. Cancels any pending tasks
+        4. Logs shutdown completion
+
+        This ensures no resource leaks occur when using the context manager.
+
+        Args:
+            exc_type: Exception type if an exception occurred
+            exc_val: Exception value if an exception occurred
+            exc_tb: Exception traceback if an exception occurred
+
+        Returns:
+            bool: False to propagate exceptions, doesn't suppress errors
+
+        Examples:
+            >>> async with BinanceWebSocket(event_bus, 'BTCUSDT', '15m') as ws:
+            ...     await ws.start_kline_stream()
+            >>> # Cleanup happens automatically here
+        """
+        logger.info(f"Shutting down WebSocket for {self.symbol}...")
+
+        try:
+            # Step 1: Stop the stream gracefully
+            if self._running:
+                await self.stop()
+
+            # Step 2: Cancel any remaining pending tasks
+            if self._stream_task and not self._stream_task.done():
+                self._stream_task.cancel()
+                try:
+                    await self._stream_task
+                except asyncio.CancelledError:
+                    logger.debug(f"Stream task cancelled during cleanup for {self.symbol}")
+
+            # Step 3: Close BinanceSocketManager if it exists
+            if self.bsm:
+                # BinanceSocketManager cleanup is handled by context manager
+                self.bsm = None
+
+            # Step 4: Close AsyncClient connection
+            await self.disconnect()
+
+            logger.info(f"WebSocket shutdown complete for {self.symbol}")
+
+        except Exception as e:
+            logger.error(f"Error during WebSocket shutdown for {self.symbol}: {e}")
+
+        # Don't suppress exceptions - return False (default)
+        return False
 
     def __repr__(self) -> str:
         """Return detailed representation of WebSocket client."""
