@@ -383,7 +383,7 @@
         "dependencies": [
           "3"
         ],
-        "status": "pending",
+        "status": "in-progress",
         "subtasks": [
           {
             "id": 1,
@@ -391,9 +391,10 @@
             "description": "Implement utility functions to calculate candle body ratio, wick sizes, and validate candle strength for pattern detection",
             "dependencies": [],
             "details": "Create src/strategy/patterns.py with helper functions:\n- calculate_body_ratio(candle: dict) -> float: Calculate abs(close - open) / (high - low), handle zero division by returning 0.0\n- is_bullish_candle(candle: dict) -> bool: Return True if close > open\n- is_bearish_candle(candle: dict) -> bool: Return True if close < open\n- get_candle_body_size(candle: dict) -> float: Return abs(close - open)\n- validate_candle_data(candle: dict) -> bool: Verify candle has required OHLC fields and high >= low\n\nEach function should handle edge cases like missing fields, invalid values, and zero-range candles. Add type hints and docstrings.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Unit tests with synthetic candle data: normal candles, zero-range candles (high=low), missing fields, doji candles (open=close). Verify body_ratio calculations with known values. Test edge cases return appropriate defaults (0.0 for zero division).",
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2025-12-03T12:16:00.019Z"
           },
           {
             "id": 2,
@@ -461,7 +462,8 @@
         ],
         "complexity": 7,
         "recommendedSubtasks": 6,
-        "expansionPrompt": "Break down pattern detection into: (1) Create helper functions for candle body/wick calculations, (2) Implement Order Block detection logic with body ratio validation, (3) Implement FVG detection with gap validation, (4) Add configuration parameter handling from config.yaml, (5) Create comprehensive unit tests with synthetic candle data, (6) Validate with real historical Binance data"
+        "expansionPrompt": "Break down pattern detection into: (1) Create helper functions for candle body/wick calculations, (2) Implement Order Block detection logic with body ratio validation, (3) Implement FVG detection with gap validation, (4) Add configuration parameter handling from config.yaml, (5) Create comprehensive unit tests with synthetic candle data, (6) Validate with real historical Binance data",
+        "updatedAt": "2025-12-03T12:16:00.019Z"
       },
       {
         "id": "6",
@@ -959,7 +961,7 @@
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2025-12-03T11:56:58.160Z",
+      "lastModified": "2025-12-03T12:16:00.020Z",
       "taskCount": 10,
       "completedCount": 4,
       "tags": [

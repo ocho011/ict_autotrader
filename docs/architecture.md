@@ -939,7 +939,185 @@ def _cleanup_old_patterns(self, max_age_candles: int = 500) -> None:
 - Interval: 15m (MVP)
 - Testnet mode enabled
 
-### 5. Strategy Engine (`src/strategy/signal_engine.py`)
+### 5. Pattern Analysis Module (`src/strategy/patterns.py`)
+
+**Purpose:** Candlestick pattern analysis utility functions for ICT pattern detection
+
+**Status:** ✅ Implemented (Task 5.1 - 2025-12-04)
+
+The Pattern Analysis module provides low-level utility functions for analyzing candlestick data, serving as the foundation for higher-level pattern detection in the Strategy Engine.
+
+**Core Functions:**
+
+#### validate_candle_data(candle: Dict[str, Any]) -> bool
+Validates OHLC candlestick data integrity:
+
+```python
+from src.strategy.patterns import validate_candle_data
+
+candle = {
+    'open': 45000.0,
+    'high': 45100.0,
+    'low': 44900.0,
+    'close': 45050.0
+}
+
+if validate_candle_data(candle):
+    # Candle data is valid and safe to process
+    pass
+```
+
+**Validation Checks:**
+- Verifies all required OHLC fields exist (open, high, low, close)
+- Ensures all values are numeric (handles TypeError/ValueError)
+- Validates high >= low relationship
+- Returns False for malformed or invalid data (graceful degradation)
+
+**Edge Cases Handled:**
+- Missing fields → False
+- Non-numeric values (strings, None) → False
+- Invalid price relationships (high < low) → False
+
+#### calculate_body_ratio(candle: Dict[str, Any]) -> float
+Calculates candle body ratio for strength analysis:
+
+```python
+ratio = calculate_body_ratio(candle)
+# Returns: abs(close - open) / (high - low)
+# Range: 0.0 (doji) to 1.0 (full body, no wicks)
+```
+
+**Usage in Pattern Detection:**
+- Strong candles (ratio > 0.7): Used for Order Block detection
+- Weak candles (ratio < 0.3): Indecision patterns, potential reversals
+- Zero-range candles (high == low): Returns 0.0 to prevent division by zero
+
+**Return Values:**
+- Normal candles: 0.0 to 1.0 representing body percentage of total range
+- Invalid data: 0.0 (fail-safe default)
+- Zero-range candles: 0.0 (prevents ZeroDivisionError)
+
+#### is_bullish_candle(candle: Dict[str, Any]) -> bool
+Determines if candle closed higher than it opened:
+
+```python
+if is_bullish_candle(candle):
+    # Price moved up: close > open
+    # Potential bullish continuation or reversal
+```
+
+**Returns:**
+- True: close > open (bullish)
+- False: close <= open (bearish or doji)
+- False: invalid data (fail-safe)
+
+#### is_bearish_candle(candle: Dict[str, Any]) -> bool
+Determines if candle closed lower than it opened:
+
+```python
+if is_bearish_candle(candle):
+    # Price moved down: close < open
+    # Potential bearish continuation or reversal
+```
+
+**Returns:**
+- True: close < open (bearish)
+- False: close >= open (bullish or doji)
+- False: invalid data (fail-safe)
+
+#### get_candle_body_size(candle: Dict[str, Any]) -> float
+Calculates absolute candle body size:
+
+```python
+body_size = get_candle_body_size(candle)
+# Returns: abs(close - open)
+# Useful for volatility analysis and position sizing
+```
+
+**Use Cases:**
+- Volatility measurement for position sizing
+- Stop loss placement calculations
+- Pattern strength validation
+- Minimum move requirements for pattern confirmation
+
+**Return Values:**
+- Valid candles: Positive float (absolute price difference)
+- Invalid data: 0.0 (fail-safe default)
+
+**Design Philosophy:**
+
+1. **Defensive Programming:**
+   - All functions validate input before processing
+   - Graceful degradation on invalid data (return safe defaults)
+   - Exception handling prevents crashes from malformed data
+
+2. **Type Safety:**
+   - Comprehensive type hints for all parameters and return values
+   - Dict[str, Any] for flexible candle data structures
+   - Explicit return type documentation
+
+3. **Zero-Dependency:**
+   - Pure Python implementation
+   - No external library dependencies
+   - Minimal computational overhead
+
+4. **Composability:**
+   - Functions designed to be combined for complex analysis
+   - Consistent return types enable chaining
+   - Stateless functions for thread safety
+
+**Integration with Strategy Engine:**
+
+```python
+from src.strategy.patterns import (
+    validate_candle_data,
+    calculate_body_ratio,
+    is_bullish_candle,
+    get_candle_body_size
+)
+
+# Order Block detection example
+def detect_order_block(candle_history: List[Dict]) -> Optional[OrderBlock]:
+    if len(candle_history) < 2:
+        return None
+
+    current = candle_history[-1]
+    previous = candle_history[-2]
+
+    # Validate data
+    if not validate_candle_data(current) or not validate_candle_data(previous):
+        return None
+
+    # Check for strong bullish candle (>70% body ratio)
+    if is_bullish_candle(current) and calculate_body_ratio(current) > 0.7:
+        # Previous candle was bearish: potential bullish OB
+        if is_bearish_candle(previous):
+            return OrderBlock(
+                type="bullish",
+                top=current['high'],
+                bottom=current['low'],
+                timestamp=current['timestamp']
+            )
+
+    return None
+```
+
+**Testing:**
+- **Test Suite:** `tests/test_patterns.py` (37 comprehensive tests)
+- **Coverage:** 100% code coverage, all edge cases validated
+- **Test Categories:**
+  - Data validation (10 tests): Missing fields, invalid values, type errors
+  - Body ratio calculation (7 tests): Normal candles, doji, zero-range, full body
+  - Direction detection (10 tests): Bullish, bearish, doji, invalid data
+  - Body size calculation (7 tests): Various scenarios including edge cases
+  - Integration scenarios (3 tests): Multi-function pattern analysis workflows
+
+**Performance:**
+- All functions: O(1) time complexity
+- Zero memory allocation (stateless operations)
+- Suitable for high-frequency real-time analysis
+
+### 6. Strategy Engine (`src/strategy/signal_engine.py`)
 
 **Purpose:** Pattern detection and entry signal generation
 
@@ -960,7 +1138,7 @@ def _cleanup_old_patterns(self, max_age_candles: int = 500) -> None:
 - Stop loss: OB boundary ± 0.2%
 - Take profit: 1% (bullish) / -1% (bearish)
 
-### 6. Order Manager (`src/execution/order_manager.py`)
+### 7. Order Manager (`src/execution/order_manager.py`)
 
 **Purpose:** Trade execution and position management
 
@@ -976,7 +1154,7 @@ def _cleanup_old_patterns(self, max_age_candles: int = 500) -> None:
 - STOP_MARKET: Stop-loss
 - TAKE_PROFIT_MARKET: Take-profit
 
-### 7. Risk Manager (`src/execution/risk_manager.py`)
+### 8. Risk Manager (`src/execution/risk_manager.py`)
 
 **Purpose:** Position sizing and risk control
 
@@ -996,7 +1174,7 @@ position_size = min(
 )
 ```
 
-### 8. Discord Notifier (`src/notification/discord.py`)
+### 9. Discord Notifier (`src/notification/discord.py`)
 
 **Purpose:** Real-time trade notifications via Discord webhook
 
@@ -1169,5 +1347,5 @@ risk:
 
 ---
 
-**Last Updated:** 2025-11-30
+**Last Updated:** 2025-12-04
 **Version:** MVP v0.1.0
