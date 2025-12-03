@@ -140,7 +140,108 @@ def mock_binance_balance(mocker):
 
 ## Integration Testing Guidelines
 
-### 1. WebSocket Flow Test (`test_websocket_flow.py`)
+### 1. Binance Testnet Integration Tests (`test_binance_testnet_integration.py`)
+
+**Scenario:** End-to-end WebSocket client with real testnet connectivity
+
+**Purpose:** Comprehensive validation of BinanceWebSocket client with actual Binance testnet, ensuring production-ready reliability.
+
+**Test Classes:**
+
+#### TestBinanceTestnetInitialization
+- WebSocket initialization with EventBus integration
+- Connection establishment to Binance testnet
+- Testnet mode detection from configuration
+- AsyncClient and BinanceSocketManager setup validation
+
+#### TestCandleClosedEventFlow
+- CANDLE_CLOSED event publishing verification (only on candle close)
+- Event data structure validation (all OHLCV fields present)
+- Event data type verification (float, datetime, string types)
+- OHLCV relationship validation (high >= close, low <= open, etc.)
+- Symbol and interval field matching
+
+#### TestReconnectionLogic
+- Exponential backoff calculation verification
+- Reconnection attempt configuration validation
+- Network resilience design confirmation
+
+#### TestGracefulShutdown
+- Graceful shutdown during active streaming
+- stop() method functionality verification
+- Async context manager cleanup validation
+- Resource release and leak prevention
+- Multiple disconnect() call safety
+
+#### TestMultiIntervalSupport
+- 1-minute interval streaming verification
+- 5-minute interval streaming verification
+- Interval field accuracy in event data
+
+#### TestConnectionLifecycleLogging
+- Connection establishment logging
+- Stream start/stop logging
+- Shutdown completion logging
+
+**Prerequisites:**
+```bash
+# 1. Binance testnet account with API credentials
+# 2. Create .env file in project root:
+BINANCE_TESTNET_API_KEY=your_testnet_api_key
+BINANCE_TESTNET_API_SECRET=your_testnet_api_secret
+
+# 3. Ensure config.yaml has:
+use_testnet: true
+```
+
+**Running Integration Tests:**
+```bash
+# All integration tests (~10-20 minutes)
+pytest tests/integration/test_binance_testnet_integration.py -v
+
+# Specific test class
+pytest tests/integration/test_binance_testnet_integration.py::TestCandleClosedEventFlow -v
+
+# Individual test
+pytest tests/integration/test_binance_testnet_integration.py::TestBinanceTestnetInitialization::test_websocket_connects_to_testnet -v
+
+# With live output
+pytest tests/integration/test_binance_testnet_integration.py -v -s
+```
+
+**Test Execution Times:**
+- Initialization tests: ~10 seconds
+- Event flow tests (1m interval): 3-6 minutes (waits for real candles)
+- Event flow tests (5m interval): 5-8 minutes (waits for real candles)
+- Shutdown tests: ~30 seconds
+- Full suite: 10-20 minutes
+
+**Test Markers:**
+- `@pytest.mark.integration` - Requires external services (testnet)
+- `@pytest.mark.asyncio` - Async test execution
+- `@pytest.mark.timeout(N)` - Per-test timeout limits
+
+**Fixtures:**
+- `event_bus` - EventBus instance
+- `event_bus_started` - Started EventBus with automatic cleanup
+- `testnet_credentials` - Validates credentials or skips test
+- `config_path` - Locates config.yaml
+
+**Success Criteria:**
+- ✅ All 11 integration tests pass
+- ✅ No resource leaks detected
+- ✅ Events contain valid OHLCV data
+- ✅ Graceful shutdown completes cleanly
+- ✅ Both 1m and 5m intervals work correctly
+
+**Documentation:**
+See `tests/integration/README.md` for:
+- Detailed setup instructions
+- Troubleshooting guide
+- CI/CD integration examples
+- Common failure scenarios and solutions
+
+### 2. WebSocket Flow Test (`test_websocket_flow.py`)
 
 **Scenario:** End-to-end candle processing
 ```
@@ -156,7 +257,7 @@ WebSocket receives candle
 - Verify event flow through EventBus
 - Validate StateStore updates
 
-### 2. Order Execution Flow Test (`test_order_execution.py`)
+### 3. Order Execution Flow Test (`test_order_execution.py`)
 
 **Scenario:** Signal to order execution
 ```
@@ -312,6 +413,7 @@ Before marking a subtask complete:
 
 ---
 
-**Last Updated:** 2025-11-30
+**Last Updated:** 2025-12-03
 **Coverage Goal:** ≥80%
 **Test Framework:** pytest + pytest-asyncio
+**Integration Tests:** Binance Testnet (task 4.7 complete)

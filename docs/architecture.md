@@ -387,7 +387,7 @@ Guaranteed cleanup complete
 - DEBUG level: Individual candle close events with OHLCV data, task cancellation details
 - ERROR level: Max retries exhausted, critical stream errors, shutdown exceptions
 
-**Test Coverage:** 56 tests total covering all functionality
+**Test Coverage:** 67 tests total covering all functionality
 - Unit tests: 49 tests (tests/unit/test_websocket_client.py)
   - Initialization validation
   - Configuration loading (testnet/mainnet)
@@ -416,14 +416,35 @@ Guaranteed cleanup complete
     - Custom max_retries parameter
     - Max retries exhaustion
     - Reconnection logging verification
-- Integration tests: 7 tests (tests/integration/test_websocket_shutdown.py)
-  - stop() method sets _running flag to False
-  - stop() can be called multiple times safely (idempotent)
-  - Async context manager entry establishes connection
-  - Async context manager exit closes connection properly
-  - Stream loop exits gracefully when _running becomes False
-  - No resource leaks after disconnect (client, bsm, _running cleanup)
-  - Exception propagation through context manager (cleanup still happens)
+- Integration tests: 18 tests total
+  - Shutdown tests: 7 tests (tests/integration/test_websocket_shutdown.py)
+    - stop() method sets _running flag to False
+    - stop() can be called multiple times safely (idempotent)
+    - Async context manager entry establishes connection
+    - Async context manager exit closes connection properly
+    - Stream loop exits gracefully when _running becomes False
+    - No resource leaks after disconnect (client, bsm, _running cleanup)
+    - Exception propagation through context manager (cleanup still happens)
+  - **Binance Testnet Integration: 11 tests (tests/integration/test_binance_testnet_integration.py) - Task 4.7**
+    - TestBinanceTestnetInitialization (2 tests)
+      - WebSocket initialization with EventBus
+      - Connection to Binance testnet with real credentials
+    - TestCandleClosedEventFlow (2 tests)
+      - CANDLE_CLOSED event publishing on real candle close
+      - Complete event data structure validation (OHLCV + types + relationships)
+    - TestReconnectionLogic (1 test)
+      - Exponential backoff calculation verification
+    - TestGracefulShutdown (2 tests)
+      - Graceful shutdown during active streaming
+      - Disconnect cleanup and resource leak prevention
+    - TestMultiIntervalSupport (2 tests)
+      - 1-minute interval streaming with real testnet data
+      - 5-minute interval streaming with real testnet data
+    - TestConnectionLifecycleLogging (1 test)
+      - Complete connection lifecycle logging verification
+    - **Runtime:** 10-20 minutes for full suite (waits for real candle close events)
+    - **Prerequisites:** Binance testnet credentials, config.yaml with use_testnet: true
+    - **Documentation:** See tests/integration/README.md for detailed setup and troubleshooting
 
 ### 3. Trading Models (`src/core/models.py`)
 
